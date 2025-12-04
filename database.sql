@@ -56,9 +56,9 @@ CREATE TABLE IF NOT EXISTS enrollments (
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
 );
 -- Ngăn chặn việc một học viên đăng ký trùng khóa học
-ALTER TABLE enrollments 
-ADD CONSTRAINT unique_student_course UNIQUE (student_id, course_id)
 -- Đảm bảo tiến độ học chỉ từ 0 đến 100 (Nếu dùng MySQL 8.0.16 trở lên)
+ALTER TABLE enrollments 
+ADD CONSTRAINT unique_student_course UNIQUE (student_id, course_id),
 ADD CONSTRAINT check_progress CHECK (progress >= 0 AND progress <= 100);
 
 
