@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS courses (
     FOREIGN KEY (instructor_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
+-- Đảm bảo giá tiền không âm
+ALTER TABLE courses
+ADD CONSTRAINT check_price CHECK (price >= 0);
 
 -- 5. Bảng enrollments (Đăng ký học)
 CREATE TABLE IF NOT EXISTS enrollments (
@@ -52,6 +55,12 @@ CREATE TABLE IF NOT EXISTS enrollments (
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
 );
+-- Ngăn chặn việc một học viên đăng ký trùng khóa học
+ALTER TABLE enrollments 
+ADD CONSTRAINT unique_student_course UNIQUE (student_id, course_id)
+-- Đảm bảo tiến độ học chỉ từ 0 đến 100 (Nếu dùng MySQL 8.0.16 trở lên)
+ADD CONSTRAINT check_progress CHECK (progress >= 0 AND progress <= 100);
+
 
 -- 6. Bảng lessons (Bài học)
 CREATE TABLE IF NOT EXISTS lessons (
@@ -64,6 +73,9 @@ CREATE TABLE IF NOT EXISTS lessons (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
+-- Đảm bảo thứ tự bài học không âm
+ALTER TABLE lessons
+ADD CONSTRAINT check_order CHECK (order_num > 0);
 
 -- 7. Bảng materials (Tài liệu đính kèm)
 CREATE TABLE IF NOT EXISTS materials (
@@ -198,32 +210,31 @@ INSERT INTO enrollments (course_id, student_id, status, progress) VALUES
 -- 5. NẠP BÀI HỌC (LESSONS)
 -- ---------------------------------------------------------
 INSERT INTO lessons (course_id, title, content, video_url, order_num) VALUES 
-(1, 'PHP - Bài 1: Cú pháp cơ bản', 'Nội dung bài 1...', 'link1', 1),
-(1, 'PHP - Bài 2: Vòng lặp', 'Nội dung bài 2...', 'link2', 2),
-(1, 'PHP - Bài 3: Hàm', 'Nội dung bài 3...', 'link3', 3),
-(1, 'PHP - Bài 4: Mảng', 'Nội dung bài 4...', 'link4', 4),
-(1, 'PHP - Bài 5: Xử lý chuỗi', 'Nội dung bài 5...', 'link5', 5),
-(1, 'PHP - Bài 6: Form Handling', 'Nội dung bài 6...', 'link6', 6),
-(1, 'PHP - Bài 7: Kết nối MySQL', 'Nội dung bài 7...', 'link7', 7),
-(1, 'PHP - Bài 8: Session & Cookie', 'Nội dung bài 8...', 'link8', 8),
-(2, 'React - Bài 1: JSX là gì?', 'Nội dung React 1...', 'link_r1', 1),
-(2, 'React - Bài 2: Components', 'Nội dung React 2...', 'link_r2', 2),
-(2, 'React - Bài 3: Props & State', 'Nội dung React 3...', 'link_r3', 3),
-(2, 'React - Bài 4: Lifecycle', 'Nội dung React 4...', 'link_r4', 4),
-(2, 'React - Bài 5: React Hooks', 'Nội dung React 5...', 'link_r5', 5),
-(3, 'HTML - Bài 1: Cấu trúc DOM', 'Nội dung HTML 1...', 'link_h1', 1),
-(3, 'HTML - Bài 2: Các thẻ Text', 'Nội dung HTML 2...', 'link_h2', 2),
-(3, 'HTML - Bài 3: Form và Input', 'Nội dung HTML 3...', 'link_h3', 3);
-
+(1, 'PHP - Bài 1: Cài đặt Xampp', 'Hướng dẫn tải và cài đặt Xampp. Bật Apache và MySQL để tạo máy chủ ảo (Localhost). Tìm hiểu thư mục htdocs để lưu file web.', 'https://youtu.be/o_M4XsWzKRw', 1),
+(1, 'PHP - Bài 2: Cú Pháp PHP', 'Quy tắc cú pháp cơ bản: thẻ mở <?php và thẻ đóng ?>. Cách tạo file index.php và chạy trên trình duyệt. Sử dụng lệnh echo để in nội dung.', 'https://youtu.be/HqR5Oq-x2tQ', 2),
+(1, 'PHP - Bài 3: Bình luận trong PHP', 'Cách sử dụng Comment để ghi chú code. Comment một dòng dùng // hoặc #. Comment nhiều dòng dùng /* ... */.', 'https://youtu.be/hZLydBc9Kh8', 3),
+(1, 'PHP - Bài 4: Chèn HTML vào PHP', 'Hướng dẫn cách lồng ghép các thẻ HTML (như h1, br) vào trong câu lệnh echo của PHP để định dạng văn bản hiển thị.', 'https://youtu.be/P_37QuHanVU', 4),
+(1, 'PHP - Bài 5: Mẹo nhớ code & Tư duy', 'Phương pháp tư duy lập trình và cách sử dụng phần mềm Simple Mind Desktop để lưu trữ kiến thức, tạo "bộ não thứ hai" giúp ghi nhớ code.', 'https://youtu.be/IM1nl8w3vfs', 5),
+(1, 'PHP - Bài 6: Biến trong PHP', 'Khái niệm về biến (Variable). Quy tắc đặt tên biến với dấu $. Các kiểu dữ liệu cơ bản (chuỗi, số) và cách gán giá trị.', 'https://youtu.be/l90_t3uPCJQ', 6),
+(1, 'PHP - Bài 7: Hằng trong PHP', 'Tìm hiểu về Hằng (Constant) - loại biến không thể thay đổi giá trị. Cách sử dụng hàm define() để khai báo hằng.', 'https://youtu.be/0vfxulYDR7E', 7),
+(1, 'PHP - Bài 8: Nháy đơn và Nháy kép', 'Sự khác biệt quan trọng: Dấu nháy kép ("") sẽ in giá trị của biến bên trong, còn dấu nháy đơn ('') sẽ in tên biến như một chuỗi văn bản.', 'https://youtu.be/ouE6yzLzcWo', 8),
+(2, 'React - Bài 1: Tổng quan ES6', 'Các tính năng mới của ES6 cần cho React: Arrow Function, khai báo biến Let/Const, Template Literals (chuỗi mẫu), Destructuring.', 'https://youtu.be/9urfEfkdusc', 1),
+(2, 'React - Bài 2: Xử lý mảng (Array)', 'Các hàm xử lý mảng quan trọng trong JS/React: forEach (duyệt), map (tạo mảng mới), filter (lọc), reduce (tích lũy).', 'https://youtu.be/lCkL-3ReUpw', 2),
+(2, 'React - Bài 3: Tổng quan ReactJS', 'Giới thiệu ReactJS là gì? Tại sao nên học React? Các khái niệm cốt lõi: Component, JSX và Virtual DOM.', 'https://youtu.be/jzLupKff3gI', 3),
+(2, 'React - Bài 4: Cài đặt ReactJS', 'Cài đặt môi trường: NodeJS, NPM. Hướng dẫn sử dụng lệnh create-react-app để khởi tạo dự án React mới và chạy lệnh npm start.', 'https://youtu.be/_xLS_vTJGeo', 4),
+(2, 'React - Bài 5: Virtual DOM', 'Giải thích cơ chế Virtual DOM (DOM ảo): Cách React so sánh (Diffing) và chỉ cập nhật những phần thay đổi lên DOM thật để tối ưu hiệu năng.', 'https://youtu.be/jtVk89TL0pQ', 5),
+(3, 'HTML - Bài 1: Tổng quan Web', 'Cách Internet vận hành: Mô hình Client-Server, địa chỉ IP, DNS. Vai trò của 3 thành phần chính: HTML (khung xương), CSS (giao diện), JS (hành động).', 'https://youtu.be/tVdaxMMW9q8', 1),
+(3, 'HTML - Bài 2: Web Tĩnh & Động', 'Phân biệt Static Website (Web tĩnh) và Dynamic Website (Web động). Khái niệm Front-end (phía người dùng) và Back-end (phía máy chủ).', 'https://youtu.be/PNBZUyfV7iI', 2),
+(3, 'HTML - Bài 3: Cài đặt VS Code', 'Hướng dẫn tải và cài đặt Visual Studio Code. Cách tạo file index.html đầu tiên và cấu trúc HTML tiêu chuẩn (! + Tab).', 'https://youtu.be/bD7Kl__Kfvo', 3);
 -- ---------------------------------------------------------
 -- 6. NẠP TÀI LIỆU (MATERIALS)
 -- ---------------------------------------------------------
 INSERT INTO materials (lesson_id, filename, file_path, file_type) VALUES 
-(1, 'slide_php_1.pdf', 'path/to/slide1.pdf', 'pdf'),
-(2, 'bai_tap_php_2.zip', 'path/to/code2.zip', 'zip'),
-(7, 'db_sample.sql', 'path/to/db.sql', 'sql'),
-(9, 'react_cheatsheet.png', 'path/to/img.png', 'image'),
-(13, 'html_boilerplate.html', 'path/to/code.html', 'code');
+(1, 'slide_php_1.pdf', 'assets/uploads/materials/slide_php_1.pdf', 'pdf'),
+(1, 'bai_tap_php_2.zip', 'assets/uploads/materials/bai_tap_php_2.zip', 'zip'),
+(1, 'db_sample.sql', 'assets/uploads/materials/db_sample.sql', 'sql'),
+(2, 'react_cheatsheet.png', 'assets/uploads/materials/react_cheatsheet.png', 'image'),
+(3, 'html_boilerplate.html', 'assets/uploads/materials/html_boilerplate.html', 'code');
 
 -- Bật lại kiểm tra khóa ngoại
 SET FOREIGN_KEY_CHECKS = 1;
