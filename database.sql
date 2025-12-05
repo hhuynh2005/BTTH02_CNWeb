@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS materials (
     lesson_id INT,
     filename VARCHAR(255),
     file_path VARCHAR(255),
-    file_type VARCHAR(50) COMMENT 'pdf, doc, ppt, v.v.',
+    file_type VARCHAR(50) COMMENT 'pdf, doc, ppt, v.v.', -- url, image, video, code, zip, sql, etc.
     uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
 );
