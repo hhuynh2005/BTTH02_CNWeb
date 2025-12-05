@@ -90,7 +90,7 @@ class Course
         return $stmt->fetch(PDO::FETCH_ASSOC); // Trả về mảng dữ liệu khóa học
     }
 
-    // ...
+
 
     // 3. Chỉnh sửa Khóa học
     public function update(int $id, string $title, string $desc, int $category_id, float $price, int $duration, string $level, string $image)
@@ -133,5 +133,25 @@ class Course
             return true;
         }
         return false;
+    }
+
+    // Phương thức Xóa Khóa học
+    public function delete(int $id)
+    {
+        // Câu lệnh SQL: Xóa dòng có ID tương ứng
+        $query = "DELETE FROM " . $this->table . " WHERE id = :id";
+
+        // Chuẩn bị câu lệnh (Prepared Statement)
+        $stmt = $this->conn->prepare($query);
+
+        // Binding Parameter: Truyền giá trị ID vào câu lệnh một cách an toàn
+        // (Sử dụng PDO::PARAM_INT để chỉ rõ đây là số nguyên)
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+        // Thực thi câu lệnh
+        if ($stmt->execute()) {
+            return true; // Xóa thành công
+        }
+        return false; // Xóa thất bại
     }
 }
