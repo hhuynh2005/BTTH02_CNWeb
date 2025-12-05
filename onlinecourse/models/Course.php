@@ -37,21 +37,22 @@ class Course
 
         $stmt = $this->conn->prepare($query);
 
-        // 1. Vệ sinh dữ liệu (Sanitize) - Giúp chống XSS
-        $title = htmlspecialchars(strip_tags($title));
-        $desc = htmlspecialchars(strip_tags($desc));
-        $level = htmlspecialchars(strip_tags($level));
-        $image = htmlspecialchars(strip_tags($image));
+        // 1. Vệ sinh dữ liệu
+        $clean_title = htmlspecialchars(strip_tags($title));
+        $clean_desc = htmlspecialchars(strip_tags($desc));
+        $clean_level = htmlspecialchars(strip_tags($level));
+        $clean_image = htmlspecialchars(strip_tags($image));
+        $status = 'pending'; // Giữ nguyên biến status
 
-        // 2. Binding Parameters - Giúp chống SQL Injection
-        $stmt->bindParam(':title', $title);
-        $stmt->bindParam(':description', $desc);
+        // 2. Binding Parameters
+        $stmt->bindParam(':title', $clean_title);
+        $stmt->bindParam(':description', $clean_desc);
         $stmt->bindParam(':instructor_id', $instructor_id, PDO::PARAM_INT);
         $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
         $stmt->bindParam(':price', $price);
         $stmt->bindParam(':duration_weeks', $duration, PDO::PARAM_INT);
-        $stmt->bindParam(':level', $level);
-        $stmt->bindParam(':image', $image);
+        $stmt->bindParam(':level', $clean_level);
+        $stmt->bindParam(':image', $clean_image);
         $stmt->bindParam(':status', $status);
 
         if ($stmt->execute()) {
