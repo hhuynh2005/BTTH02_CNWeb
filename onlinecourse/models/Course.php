@@ -59,4 +59,33 @@ class Course
         }
         return false;
     }
+
+
+
+    // 1. Lấy danh sách khóa học theo ID Giảng viên (Dùng cho trang quản lý)
+    public function getAllByInstructorId(int $instructor_id)
+    {
+        $query = "SELECT c.*, cat.name AS category_name 
+                  FROM " . $this->table . " c
+                  JOIN " . $this->category_table . " cat ON c.category_id = cat.id
+                  WHERE c.instructor_id = :instructor_id
+                  ORDER BY c.created_at DESC";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':instructor_id', $instructor_id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt;
+    }
+
+    // 2. Lấy chi tiết khóa học theo ID (Dùng cho form Chỉnh sửa)
+    public function getById(int $id)
+    {
+        $query = "SELECT * FROM " . $this->table . " WHERE id = :id LIMIT 0,1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC); // Trả về mảng dữ liệu khóa học
+    }
 }
