@@ -1,12 +1,14 @@
 <?php
+// models/User.php
 class User {
     private $conn;
     private $table_name = "users";
 
+    // Các thuộc tính user
     public $id;
     public $username;
     public $email;
-    public $password;
+    public $password; // Chứa mật khẩu đã mã hóa (hashed)
     public $fullname;
     public $role;
 
@@ -14,25 +16,67 @@ class User {
         $this->conn = $db;
     }
 
-    // Kiểm tra email có tồn tại không
+    // Kiểm tra xem email có tồn tại không
     public function emailExists() {
-        // Sử dụng prepared statement để tránh SQL Injection [cite: 101]
-        $query = "SELECT id, password, fullname, role, username 
+        // Query chỉ lấy những trường cần thiết để xác thực
+        $query = "SELECT id, username, password, fullname, role
                   FROM " . $this->table_name . " 
-                  WHERE email = ? LIMIT 0,1";
+                  WHERE email = ? 
+                  LIMIT 0,1";
 
         $stmt = $this->conn->prepare($query);
+        
+        // Làm sạch dữ liệu input
         $this->email = htmlspecialchars(strip_tags($this->email));
+        
+        // Gán tham số
         $stmt->bindParam(1, $this->email);
         $stmt->execute();
 
+        // Nếu tìm thấy 1 dòng dữ liệu
         if ($stmt->rowCount() > 0) {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Gán dữ liệu vào object để Controller sử dụng
             $this->id = $row['id'];
             $this->username = $row['username'];
+            $this->password = $row['password']; // Mật khẩu hash từ DB
             $this->fullname = $row['fullname'];
-            $this->password = $row['password']; // Hash mật khẩu
             $this->role = $row['role'];
+            
+            return true; // Email có tồn tại
+        }
+        return false; // Email không tồn tại
+    }
+    // Thêm đoạn này vào trong class User (models/User.php)
+
+    // Chức năng Đăng ký: Tạo user mới
+    public function create() {
+        // Query insert dữ liệu
+        $query = "INSERT INTO " . $this->table_name . " 
+                  (username, email, password, fullname, role) 
+                  VALUES (:username, :email, :password, :fullname, :role)";
+
+        $stmt = $this->conn->prepare($query);
+
+        // Làm sạch dữ liệu (sanitize)
+        $this->username = htmlspecialchars(strip_tags($this->username));
+        $this->email = htmlspecialchars(strip_tags($this->email));
+        $this->fullname = htmlspecialchars(strip_tags($this->fullname));
+        $this->role = htmlspecialchars(strip_tags($this->role));
+
+        // --- LƯU Ý QUAN TRỌNG ---
+        // Vì bạn đang test mật khẩu thô, nên ở đây ta gán trực tiếp.
+        // Khi nộp bài, bạn nhớ đổi lại thành: $hashed_password = password_hash($this->password, PASSWORD_BCRYPT);
+        $stmt->bindParam(':password', $this->password); 
+        
+        // Gán các tham số còn lại
+        $stmt->bindParam(':username', $this->username);
+        $stmt->bindParam(':email', $this->email);
+        $stmt->bindParam(':fullname', $this->fullname);
+        $stmt->bindParam(':role', $this->role);
+
+        if ($stmt->execute()) {
             return true;
         }
         return false;
