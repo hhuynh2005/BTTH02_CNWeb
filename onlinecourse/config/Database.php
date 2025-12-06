@@ -1,5 +1,5 @@
-// Quản lý kết nối tới cơ sở dữ liệu thông qua thư viện PDO 
-// Được gọi trực tiếp trong các Model con 
+<!-- // Quản lý kết nối tới cơ sở dữ liệu thông qua thư viện PDO 
+// Được gọi trực tiếp trong các Model con  -->
 <?php
 
 class Database
@@ -26,7 +26,7 @@ class Database
             // Thiết lập chế độ báo lỗi (rất quan trọng)
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            echo "Kết nối thành công!";
+            // echo "Kết nối thành công!";
         } catch (PDOException $exception) {
             // Dùng die() để dừng chương trình nếu kết nối thất bại
             die("LỖI KẾT NỐI CSDL: " . $exception->getMessage());
