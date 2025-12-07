@@ -1,4 +1,24 @@
+# Bật Rewrite Engine
 RewriteEngine On
+
+# Nếu request là file hoặc thư mục thực sự, cho phép truy cập trực tiếp
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Chuyển tất cả request khác về index.php
+RewriteRule ^(.*)$ index.php/$1 [L,QSA]
+
+# Ngăn truy cập trực tiếp vào các thư mục nhạy cảm
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Thiết lập index file mặc định
+DirectoryIndex index.php
+
+# Bật UTF-8 encoding
+AddDefaultCharset UTF-8
+
+# Cho phép CORS (nếu cần)
+# Header set Access-Control-Allow-Origin "*"

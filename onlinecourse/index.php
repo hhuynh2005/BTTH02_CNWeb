@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // ----------------------------------------------------
-// 1. Cấu hình & Định nghĩa Đường dẫn Tuyệt đối (ABSOLUTE PATHS)
+// 1. Cấu hình & Định nghĩa Đường dẫn
 // ----------------------------------------------------
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', __DIR__);
@@ -17,23 +17,18 @@ if (!defined('ROOT_PATH')) {
     define('VIEWS_PATH', ROOT_PATH . '/views');
     define('MODELS_PATH', ROOT_PATH . '/models');
     define('CONFIG_PATH', ROOT_PATH . '/config');
-    // ⚠️ ĐỊNH NGHĨA BASE_URL ĐỂ DÙNG TRONG HTML (QUAN TRỌNG CHO ASSETS/FORM ACTION)
-    // Thay thế chuỗi này bằng đường dẫn gốc của bạn:
     define('BASE_URL', '/cse485/BTTH02_CNWeb/onlinecourse');
 }
 
 // ----------------------------------------------------
-// 2. Tự động nạp lớp (Autoloading)
+// 2. Tự động nạp lớp
 // ----------------------------------------------------
 spl_autoload_register(function ($class) {
     $file = '';
 
-    // Nạp Controller
     if (strpos($class, 'Controller') !== false) {
         $file = CONTROLLERS_PATH . '/' . $class . '.php';
-    }
-    // Nạp Model (Giả sử các lớp khác là Model)
-    else {
+    } else {
         $file = MODELS_PATH . '/' . $class . '.php';
     }
 
@@ -43,46 +38,54 @@ spl_autoload_register(function ($class) {
 });
 
 // ----------------------------------------------------
-// 3. Phân tích URL (Routing cơ bản)
+// 3. Phân tích URL (Routing) - FIXED
 // ----------------------------------------------------
-
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
 
-// Cắt bỏ phần Base Path
+// Loại bỏ base path
 $base_path_segments = trim(BASE_URL, '/');
 if (strpos($uri, $base_path_segments) === 0) {
     $uri = substr($uri, strlen($base_path_segments));
 }
-$uri = trim($uri, '/'); // Loại bỏ dấu '/' còn sót
+$uri = trim($uri, '/');
 
-$segments = explode('/', $uri);
+// Loại bỏ index.php khỏi URI nếu có
+$uri = preg_replace('/^index\.php\/?/', '', $uri);
 
-$controllerName = !empty($segments[0]) ? ucfirst($segments[0]) . 'Controller' : 'HomeController';
-$actionName = !empty($segments[1]) ? $segments[1] : 'index';
+// Parse segments
+$segments = !empty($uri) ? explode('/', $uri) : [];
+
+// Xác định controller và action
+$controllerName = !empty($segments[0]) && $segments[0] !== ''
+    ? ucfirst($segments[0]) . 'Controller'
+    : 'HomeController';
+
+$actionName = !empty($segments[1]) && $segments[1] !== ''
+    ? $segments[1]
+    : 'index';
 
 // ----------------------------------------------------
-// 4. Xử lý Yêu cầu (Dispatch)
+// 4. Xử lý Request
 // ----------------------------------------------------
-
 $controllerFile = CONTROLLERS_PATH . '/' . $controllerName . '.php';
 
 if (file_exists($controllerFile)) {
-    // Controller được nạp qua Autoload hoặc include nếu Autoload thất bại
-
     if (!class_exists($controllerName)) {
-        require_once $controllerFile; // Đảm bảo lớp được định nghĩa
+        require_once $controllerFile;
     }
 
     $controller = new $controllerName();
 
     if (method_exists($controller, $actionName)) {
-        call_user_func_array([$controller, $actionName], array_slice($segments, 2));
+        // Truyền params từ segment thứ 2 trở đi
+        $params = array_slice($segments, 2);
+        call_user_func_array([$controller, $actionName], $params);
     } else {
-        // Lỗi 404 cho Action
+        http_response_code(404);
         echo "Lỗi 404: Action '{$actionName}' không tồn tại trong Controller '{$controllerName}'";
     }
 } else {
-    // Lỗi 404 cho Controller
+    http_response_code(404);
     echo "Lỗi 404: Controller '{$controllerName}' không tồn tại.";
 }
 ?>
