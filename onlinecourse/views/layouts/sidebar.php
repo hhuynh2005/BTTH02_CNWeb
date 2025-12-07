@@ -1,162 +1,65 @@
 <?php
-    // 1. Lấy URL hiện tại để active menu
-    $url = isset($_GET['url']) ? $_GET['url'] : '';
-    
-    // Hàm kiểm tra active
-    if (!function_exists('isActive')) {
-        function isActive($url, $checkString) {
-            return (strpos($url, $checkString) !== false) ? 'active' : '';
-        }
-    }
-
-    // 2. Xác định Role và Tên hiển thị
-    $userRole = isset($_SESSION['user']['role']) ? $_SESSION['user']['role'] : -1; // -1 là khách
-    $roleName = 'Khách';
-    
-    if ($userRole === 0) $roleName = 'Học viên';
-    elseif ($userRole === 1) $roleName = 'Giảng viên';
-    elseif ($userRole === 2) $roleName = 'Quản trị viên';
+// Lấy vai trò người dùng từ Session
+// Giả sử $_SESSION['role'] được thiết lập sau khi đăng nhập thành công
+$role = $_SESSION['role'] ?? 0;
+// Định nghĩa BASE_URL để sử dụng trong các link
+$BASE_URL = BASE_URL; // Đã được định nghĩa trong index.php
 ?>
 
-<aside class="sidebar-student">
-    <div class="user-info">
-        <div class="avatar">
-            <?php 
-                $avatarPath = isset($_SESSION['user']['avatar']) && $_SESSION['user']['avatar'] 
-                    ? 'assets/uploads/avatars/' . $_SESSION['user']['avatar'] 
-                    : 'assets/uploads/avatars/default.png';
-            ?>
-            <img src="<?php echo $avatarPath; ?>" alt="Avatar">
-        </div>
-        <div class="info">
-            <p>Xin chào,</p>
-            <h4><?php echo isset($_SESSION['user']['fullname']) ? $_SESSION['user']['fullname'] : $roleName; ?></h4>
-            <small style="color: #666;">(<?php echo $roleName; ?>)</small>
-        </div>
+<div class="border-end" id="sidebar-wrapper">
+    <div class="sidebar-heading">
+        <i class="fas fa-graduation-cap me-2 text-primary"></i> Quản Lý Khóa Học
     </div>
+    <div class="list-group list-group-flush">
 
-    <hr>
+        <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/home/index">
+            <i class="fas fa-home"></i> Trang Chủ
+        </a>
+        <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/courses/index">
+            <i class="fas fa-list-alt"></i> Danh Sách Khóa Học
+        </a>
 
-    <ul class="menu-list">
-        
-        <?php if ($userRole === 0): ?>
-<!--             
-            <li class="menu-item <?php echo isActive($url, 'enrollment/dashboard'); ?>">
-                <a href="index.php?url=enrollment/dashboard">
-                    <i class="icon-dashboard"></i> 
-                    Tổng quan (Dashboard)
-                </a>
-            </li> -->
-
-            <li class="menu-item <?php echo isActive($url, 'enrollment/my_courses'); ?>">
-                <a href="index.php?url=enrollment/my_courses">
-                    <i class="icon-book"></i> 
-                    Khóa học của tôi
-                </a>
-            </li>
-
-            <li class="menu-item <?php echo isActive($url, 'enrollment/course_progress'); ?>">
-                <a href="index.php?url=enrollment/course_progress">
-                    <i class="icon-chart-bar"></i> 
-                    Theo dõi tiến độ
-                </a>
-            </li>
-
-            <li class="menu-item <?php echo isActive($url, 'course/index'); ?>">
-                <a href="index.php?url=course/index">
-                    <i class="icon-search"></i> 
-                    Đăng ký khóa học mới
-                </a>
-            </li>
-
-        <?php elseif ($userRole === 1): ?>
-            
-            <li class="menu-item <?php echo isActive($url, 'instructor/dashboard'); ?>">
-                <a href="index.php?url=instructor/dashboard">
-                    <i class="icon-dashboard"></i> 
-                    Dashboard GV
-                </a>
-            </li>
-            <li class="menu-item <?php echo isActive($url, 'instructor/course/manage'); ?>">
-                <a href="index.php?url=instructor/course/manage">
-                    <i class="icon-folder-open"></i> 
-                    Quản lý khóa học
-                </a>
-            </li>
-            <li class="menu-item <?php echo isActive($url, 'instructor/course/create'); ?>">
-                <a href="index.php?url=instructor/course/create">
-                    <i class="icon-plus"></i> 
-                    Tạo khóa học
-                </a>
-            </li>
-
-        <?php elseif ($userRole === 2): ?>
-
-            <li class="menu-item <?php echo isActive($url, 'admin/dashboard'); ?>">
-                <a href="index.php?url=admin/dashboard">
-                    <i class="icon-dashboard"></i> 
-                    Thống kê hệ thống
-                </a>
-            </li>
-            <li class="menu-item <?php echo isActive($url, 'admin/users'); ?>">
-                <a href="index.php?url=admin/users/manage">
-                    <i class="icon-users"></i> 
-                    Quản lý người dùng
-                </a>
-            </li>
-
-        <?php else: ?>
-            
-            <li class="menu-item">
-                <a href="index.php?url=auth/login">
-                    <i class="icon-login"></i> 
-                    Đăng nhập
-                </a>
-            </li>
-            <li class="menu-item">
-                <a href="index.php?url=auth/register">
-                    <i class="icon-user-add"></i> 
-                    Đăng ký
-                </a>
-            </li>
-            <li class="menu-item <?php echo isActive($url, 'course/index'); ?>">
-                <a href="index.php?url=course/index">
-                    <i class="icon-search"></i> 
-                    Xem danh sách khóa học
-                </a>
-            </li>
-
+        [cite_start]<?php if ($role == 0): // Menu CHỨC NĂNG HỌC VIÊN[cite: 73] ?>
+            <div class="sidebar-category">TÀI KHOẢN HỌC VIÊN</div>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/student/my_courses">
+                [cite_start]<i class="fas fa-book-reader"></i> Khóa Học Của Tôi [cite: 77]
+            </a>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/student/course_progress">
+                [cite_start]<i class="fas fa-chart-line"></i> Theo Dõi Tiến Độ [cite: 78]
+            </a>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/user/profile">
+                <i class="fas fa-user-cog"></i> Cập nhật Profile/Avatar
+            </a>
         <?php endif; ?>
 
-        <?php if ($userRole !== -1): ?>
-            <hr>
-            <li class="menu-item logout">
-                <a href="index.php?url=auth/logout" onclick="return confirm('Bạn có chắc muốn đăng xuất?');">
-                    <i class="icon-logout"></i> 
-                    Đăng xuất
-                </a>
-            </li>
+        <?php if ($role >= 1): // Menu QUẢN LÝ (Giảng viên/Admin) ?>
+            <div class="sidebar-category">QUẢN LÝ KHÓA HỌC</div>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/instructor/dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard Quản Lý
+            </a>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/instructor/course/manage">
+                [cite_start]<i class="fas fa-folder-open"></i> Quản lý Khóa học [cite: 82]
+            </a>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/instructor/materials/upload">
+                [cite_start]<i class="fas fa-cloud-upload-alt"></i> Đăng tải Tài liệu [cite: 84]
+            </a>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/instructor/students/list">
+                [cite_start]<i class="fas fa-users"></i> Danh sách Học viên [cite: 85]
+            </a>
         <?php endif; ?>
 
-    </ul>
-</aside>
+        <?php if ($role == 2): // Menu ADMIN (Role 2) ?>
+            <div class="sidebar-category">QUẢN TRỊ HỆ THỐNG</div>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/admin/users/manage">
+                [cite_start]<i class="fas fa-user-shield"></i> Quản lý Người dùng [cite: 88]
+            </a>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/admin/categories/list">
+                [cite_start]<i class="fas fa-tags"></i> Quản lý Danh mục [cite: 89]
+            </a>
+            <a class="list-group-item list-group-item-action" href="<?php echo $BASE_URL; ?>/admin/reports/statistics">
+                [cite_start]<i class="fas fa-chart-area"></i> Xem Thống kê [cite: 90]
+            </a>
+        <?php endif; ?>
 
-<style>
-    /* CSS Sidebar (Giữ nguyên như cũ) */
-    .menu-item.active a {
-        background-color: #e3f2fd;
-        color: #0d6efd;
-        font-weight: bold;
-        border-left: 4px solid #0d6efd;
-    }
-    .menu-item a {
-        display: block;
-        padding: 10px 15px;
-        text-decoration: none;
-        color: #333;
-        transition: 0.3s;
-    }
-    .menu-item a:hover {
-        background-color: #f1f1f1;
-    }
-</style>
+    </div>
+</div>
