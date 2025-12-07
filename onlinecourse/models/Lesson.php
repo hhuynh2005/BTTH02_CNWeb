@@ -1,151 +1,125 @@
-<!-- // File: models/Lesson.php -->
-
 <?php
-
+// File: models/Lesson.php
 
 require_once 'config/Database.php';
 
-class Lesson {
+class Lesson
+{
     private $conn;
     private $table = 'lessons';
 
-    public function __construct() {
+    public function __construct()
+    {
         $database = new Database();
         $this->conn = $database->getConnection();
     }
 
-    // =========================================================================
-    // PHẦN 1: PUBLIC / STUDENT (Học viên xem bài học)
-    // =========================================================================
 
-    /**
-     * Lấy danh sách bài học của một khóa học (Sắp xếp theo thứ tự)
-     * Dùng cho trang: Chi tiết khóa học (Course Detail)
-     */
-    public function getByCourseId($course_id) {
-        try {
-            // Lưu ý: `order` là từ khóa SQL, cần bọc trong dấu huyền ``
-            $query = "SELECT * FROM " . $this->table . " 
-                      WHERE course_id = :course_id 
-                      ORDER BY order_num ASC";
+    /* =========================================================================
+     *  PHẦN 1 — STUDENT VIEW (Học viên xem bài học)
+     * =========================================================================
+    */
 
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
-            $stmt->execute();
+    // Lấy danh sách bài học của 1 khóa học (sắp theo thứ tự)
+    public function getByCourseId(int $course_id)
+    {
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE course_id = :course_id
+                  ORDER BY order_num ASC";
 
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            echo "Lỗi lấy danh sách bài học: " . $e->getMessage();
-            return [];
-        }
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Lấy chi tiết một bài học
-     * Dùng cho trang: Học bài (Lesson View)
-     */
-    public function getById($id) {
-        try {
-            $query = "SELECT * FROM " . $this->table . " WHERE id = :id LIMIT 0,1";
+    // Lấy chi tiết bài học theo ID
+    public function getById(int $id)
+    {
+        $query = "SELECT * FROM " . $this->table . " WHERE id = :id LIMIT 1";
 
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-            $stmt->execute();
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
 
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            return null;
-        }
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // =========================================================================
-    // PHẦN 2: INSTRUCTOR (Giảng viên quản lý bài học)
-    // =========================================================================
 
-    /**
-     * Tạo bài học mới
-     */
-    public function create($course_id, $title, $content, $video_url, $order) {
-        try {
-            $query = "INSERT INTO " . $this->table . " 
-                      (course_id, title, content, video_url, `order`, created_at) 
-                      VALUES (:course_id, :title, :content, :video_url, :order, NOW())";
+    /* =========================================================================
+     *  PHẦN 2 — INSTRUCTOR CRUD
+     * =========================================================================
+    */
 
-            $stmt = $this->conn->prepare($query);
+    // CREATE
+    public function create(int $course_id, string $title, string $content, string $video_url, int $order)
+    {
+        $query = "INSERT INTO " . $this->table . " 
+                  (course_id, title, content, video_url, order_num, created_at)
+                  VALUES (:course_id, :title, :content, :video_url, :order_num, NOW())";
 
-            // Vệ sinh dữ liệu
-            $title = htmlspecialchars(strip_tags($title));
-            // Content có thể chứa HTML (WYSIWYG editor), cân nhắc strip_tags hoặc không tùy yêu cầu
-            // Ở đây ta giữ nguyên content nhưng dùng bindParam để tránh SQL Injection
-            $video_url = htmlspecialchars(strip_tags($video_url));
-            
-            $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
-            $stmt->bindParam(':title', $title);
-            $stmt->bindParam(':content', $content); // Cho phép lưu HTML
-            $stmt->bindParam(':video_url', $video_url);
-            $stmt->bindParam(':order', $order, PDO::PARAM_INT);
+        $stmt = $this->conn->prepare($query);
 
-            if ($stmt->execute()) {
-                return true;
-            }
-            return false;
-        } catch (PDOException $e) {
-            echo "Lỗi tạo bài học: " . $e->getMessage();
-            return false;
-        }
+        $clean_title   = htmlspecialchars(strip_tags($title));
+        $clean_video   = htmlspecialchars(strip_tags($video_url));
+
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->bindParam(':title', $clean_title);
+        $stmt->bindParam(':content', $content); // content có thể chứa HTML
+        $stmt->bindParam(':video_url', $clean_video);
+        $stmt->bindParam(':order_num', $order, PDO::PARAM_INT);
+
+        return $stmt->execute();
     }
 
-    /**
-     * Cập nhật bài học
-     */
-    public function update($id, $title, $content, $video_url, $order) {
-        try {
-            $query = "UPDATE " . $this->table . " 
-                      SET title = :title, 
-                          content = :content, 
-                          video_url = :video_url, 
-                          `order` = :order 
-                      WHERE id = :id";
+    // READ: tất cả bài học theo course_id (dùng cho trang instructor)
+    public function getAllByCourseId(int $course_id)
+    {
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE course_id = :course_id 
+                  ORDER BY order_num ASC";
 
-            $stmt = $this->conn->prepare($query);
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->execute();
 
-            $title = htmlspecialchars(strip_tags($title));
-            $video_url = htmlspecialchars(strip_tags($video_url));
-
-            $stmt->bindParam(':title', $title);
-            $stmt->bindParam(':content', $content);
-            $stmt->bindParam(':video_url', $video_url);
-            $stmt->bindParam(':order', $order, PDO::PARAM_INT);
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-
-            if ($stmt->execute()) {
-                return true;
-            }
-            return false;
-        } catch (PDOException $e) {
-            return false;
-        }
+        return $stmt;
     }
 
-    /**
-     * Xóa bài học
-     */
-    public function delete($id) {
-        try {
-            // Có thể cần xóa thêm tài liệu (materials) liên quan trước khi xóa bài học
-            // Nhưng ở mức cơ bản, ta chỉ xóa bài học
-            $query = "DELETE FROM " . $this->table . " WHERE id = :id";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    // UPDATE
+    public function update(int $id, string $title, string $content, string $video_url, int $order)
+    {
+        $query = "UPDATE " . $this->table . " 
+                  SET title = :title,
+                      content = :content,
+                      video_url = :video_url,
+                      order_num = :order_num
+                  WHERE id = :id";
 
-            if ($stmt->execute()) {
-                return true;
-            }
-            return false;
-        } catch (PDOException $e) {
-            return false;
-        }
+        $stmt = $this->conn->prepare($query);
+
+        $clean_title = htmlspecialchars(strip_tags($title));
+        $clean_video = htmlspecialchars(strip_tags($video_url));
+
+        $stmt->bindParam(':title', $clean_title);
+        $stmt->bindParam(':content', $content);
+        $stmt->bindParam(':video_url', $clean_video);
+        $stmt->bindParam(':order_num', $order, PDO::PARAM_INT);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    // DELETE
+    public function delete(int $id)
+    {
+        $query = "DELETE FROM " . $this->table . " WHERE id = :id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
     }
 }
 ?>
