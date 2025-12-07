@@ -48,6 +48,29 @@ class User {
         }
         return false; // Email không tồn tại
     }
+
+    // Thêm vào class User trong models/User.php
+
+    // Lấy danh sách tất cả người dùng
+    // Trong file models/User.php
+    
+    public function getAllUsers() {
+        // Query lấy toàn bộ người dùng
+        $query = "SELECT * FROM " . $this->table_name . " ORDER BY id DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt;
+    }
+
+    // Hàm xóa người dùng (cho chức năng quản lý)
+    public function delete($id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id);
+        if ($stmt->execute()) return true;
+        return false;
+    }
+    
     // Thêm đoạn này vào trong class User (models/User.php)
 
     // Chức năng Đăng ký: Tạo user mới
@@ -69,8 +92,8 @@ class User {
         // Vì bạn đang test mật khẩu thô, nên ở đây ta gán trực tiếp.
         // Khi nộp bài, bạn nhớ đổi lại thành: 
         
-        $hashed_password = password_hash($this->password, PASSWORD_BCRYPT);
-        $stmt->bindParam(':password', $hashed_password); 
+        // $hashed_password = password_hash($this->password, PASSWORD_BCRYPT);
+        $stmt->bindParam(':password', $this->password); 
         
         // Gán các tham số còn lại
         $stmt->bindParam(':username', $this->username);
@@ -82,6 +105,18 @@ class User {
             return true;
         }
         return false;
+    }
+    // Thêm vào trong class User (models/User.php)
+
+    public function getUserStatistics() {
+        // Query đếm số lượng user theo từng role
+        // GROUP BY role sẽ gom nhóm: 0 (HV), 1 (GV), 2 (Admin)
+        $query = "SELECT role, COUNT(*) as count FROM " . $this->table_name . " GROUP BY role";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 ?>

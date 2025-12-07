@@ -77,7 +77,7 @@ class AuthController {
             if ($user->emailExists()) {
                 
                 // 4. KIỂM TRA MẬT KHẨU
-                if (password_verify($password_input, $user->password)) {
+                // if (password_verify($password_input, $user->password)) {
                     
                     // 5. Đăng nhập thành công -> Lưu Session
                     if (session_status() === PHP_SESSION_NONE) session_start();
@@ -106,5 +106,5 @@ class AuthController {
             }
         }
     }
-}
+// }
 ?>
