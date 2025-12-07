@@ -4,132 +4,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Hệ thống khóa học</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Dashboard Admin - Online Course</title>
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/style.css">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin.css">
 </head>
 
-<body class="bg-light">
-
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="index.php?controller=admin&action=dashboard">
-                <i class="fas fa-user-shield me-2"></i>ADMIN PANEL
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <span class="nav-link text-light">
-                            Xin chào,
-                            <strong><?php echo isset($_SESSION['fullname']) ? $_SESSION['fullname'] : 'Admin'; ?></strong>
-                        </span>
-                    </li>
-                    <li class="nav-item ms-2">
-                        <a href="index.php?controller=auth&action=logout" class="btn btn-danger btn-sm mt-1">
-                            <i class="fas fa-sign-out-alt me-1"></i> Đăng xuất
-                        </a>
-                    </li>
-                </ul>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <div class="navbar-brand">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <rect width="40" height="40" rx="8" fill="#4F46E5" />
+                    <path
+                        d="M20 12.5L12.5 16.25V23.75C12.5 27.5 15.625 30.875 20 31.875C24.375 30.875 27.5 27.5 27.5 23.75V16.25L20 12.5Z"
+                        fill="white" />
+                </svg>
+                <span>Online Course - Admin</span>
+            </div>
+            <div class="navbar-actions">
+                <span>Xin chào, <strong><?php echo htmlspecialchars($_SESSION['fullname']); ?></strong></span>
+                <a href="<?php echo BASE_URL; ?>/auth/logout" class="btn btn-danger btn-sm">Đăng xuất</a>
             </div>
         </div>
     </nav>
 
-    <div class="container">
-        <h2 class="mb-4 text-secondary border-bottom pb-2">Tổng quan hệ thống</h2>
-
-        <div class="row g-4 mb-5">
-
-            <div class="col-md-6 col-lg-3">
-                <div class="card text-white bg-primary h-100 shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title text-uppercase mb-1">Tổng thành viên</h6>
-                                <h2 class="display-6 fw-bold mb-0">
-                                    <?php echo isset($count['total']) ? $count['total'] : 0; ?></h2>
-                            </div>
-                            <i class="fas fa-users fa-3x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-3">
-                <div class="card text-white bg-success h-100 shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title text-uppercase mb-1">Học viên</h6>
-                                <h2 class="display-6 fw-bold mb-0">
-                                    <?php echo isset($count['student']) ? $count['student'] : 0; ?></h2>
-                            </div>
-                            <i class="fas fa-user-graduate fa-3x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-3">
-                <div class="card text-dark bg-warning h-100 shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title text-uppercase mb-1">Giảng viên</h6>
-                                <h2 class="display-6 fw-bold mb-0">
-                                    <?php echo isset($count['instructor']) ? $count['instructor'] : 0; ?></h2>
-                            </div>
-                            <i class="fas fa-chalkboard-teacher fa-3x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-3">
-                <div class="card text-white bg-danger h-100 shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title text-uppercase mb-1">Quản trị viên</h6>
-                                <h2 class="display-6 fw-bold mb-0">
-                                    <?php echo isset($count['admin']) ? $count['admin'] : 0; ?></h2>
-                            </div>
-                            <i class="fas fa-user-shield fa-3x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <h4 class="mb-3 text-secondary">Chức năng quản lý</h4>
-        <div class="row">
-            <div class="col-md-4">
-                <a href="index.php?controller=admin&action=listUsers" class="text-decoration-none">
-                    <div class="card shadow-sm hover-shadow transition">
-                        <div class="card-body text-center py-4">
-                            <i class="fas fa-users-cog fa-3x text-primary mb-3"></i>
-                            <h5 class="card-title text-dark">Quản lý người dùng</h5>
-                            <p class="card-text text-muted">Xem, sửa, xóa tài khoản hệ thống</p>
-                        </div>
-                    </div>
+    <!-- Main Content -->
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-menu">
+                <a href="<?php echo BASE_URL; ?>/admin/dashboard" class="sidebar-item active">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="<?php echo BASE_URL; ?>/admin/users" class="sidebar-item">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                    </svg>
+                    Quản lý người dùng
+                </a>
+                <a href="<?php echo BASE_URL; ?>/admin/categories" class="sidebar-item">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                    </svg>
+                    Danh mục
+                </a>
+                <a href="<?php echo BASE_URL; ?>/admin/courses" class="sidebar-item">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z" />
+                    </svg>
+                    Khóa học
                 </a>
             </div>
+        </aside>
 
-            <div class="col-md-4">
-                <div class="card shadow-sm opacity-50">
-                    <div class="card-body text-center py-4">
-                        <i class="fas fa-book fa-3x text-secondary mb-3"></i>
-                        <h5 class="card-title text-dark">Quản lý khóa học</h5>
-                        <p class="card-text text-muted">(Đang phát triển bởi Nhóm 2)</p>
+        <!-- Content Area -->
+        <main class="admin-content">
+            <div class="content-header">
+                <h1>Dashboard</h1>
+                <p>Tổng quan về hệ thống</p>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon primary">
+                        <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                                d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Tổng người dùng</h3>
+                        <div class="stat-number"><?php echo $count['total']; ?></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon success">
+                        <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Học viên</h3>
+                        <div class="stat-number"><?php echo $count['student']; ?></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon warning">
+                        <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                                d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Giảng viên</h3>
+                        <div class="stat-number"><?php echo $count['instructor']; ?></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon danger">
+                        <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Quản trị viên</h3>
+                        <div class="stat-number"><?php echo $count['admin']; ?></div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Hành động nhanh</h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <a href="<?php echo BASE_URL; ?>/admin/users" class="btn btn-outline"
+                            style="justify-content: center;">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                            </svg>
+                            Quản lý người dùng
+                        </a>
+                        <a href="<?php echo BASE_URL; ?>/admin/categories" class="btn btn-outline"
+                            style="justify-content: center;">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                            </svg>
+                            Quản lý danh mục
+                        </a>
+                        <a href="<?php echo BASE_URL; ?>/admin/courses" class="btn btn-outline"
+                            style="justify-content: center;">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z" />
+                            </svg>
+                            Quản lý khóa học
+                        </a>
+                        <a href="<?php echo BASE_URL; ?>/" class="btn btn-primary" style="justify-content: center;">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                            </svg>
+                            Về trang chủ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 </body>
 
 </html>
