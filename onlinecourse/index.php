@@ -38,7 +38,7 @@ switch ($controller) {
     case 'home':
         $home = new HomeController();
         $home->index();
-        break;
+        break;        
         
     default:
         echo "Lỗi: Controller không tồn tại.";

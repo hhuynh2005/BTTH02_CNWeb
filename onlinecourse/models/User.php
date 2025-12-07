@@ -67,8 +67,10 @@ class User {
 
         // --- LƯU Ý QUAN TRỌNG ---
         // Vì bạn đang test mật khẩu thô, nên ở đây ta gán trực tiếp.
-        // Khi nộp bài, bạn nhớ đổi lại thành: $hashed_password = password_hash($this->password, PASSWORD_BCRYPT);
-        $stmt->bindParam(':password', $this->password); 
+        // Khi nộp bài, bạn nhớ đổi lại thành: 
+        
+        $hashed_password = password_hash($this->password, PASSWORD_BCRYPT);
+        $stmt->bindParam(':password', $hashed_password); 
         
         // Gán các tham số còn lại
         $stmt->bindParam(':username', $this->username);
