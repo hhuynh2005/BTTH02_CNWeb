@@ -1,97 +1,152 @@
 <?php
-// index.php
-
-// ------------------------------------------------------------------
-// 1. CẤU HÌNH MÔI TRƯỜNG & SESSION
-// ------------------------------------------------------------------
-// Bật hiển thị lỗi để dễ debug (Tắt khi deploy thực tế)
-// developer: 1, user: 0
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
-error_reporting(E_ALL);
-
-// Khởi động session (Bắt buộc cho chức năng Login/Logout)
+// ============================================================
+// 1. KHỞI ĐỘNG SESSION & CẤU HÌNH CƠ BẢN
+// ============================================================
 session_start();
 
-// ------------------------------------------------------------------
-// 2. NHÚNG CÁC FILE CẦN THIẾT (INCLUDES)
-// ------------------------------------------------------------------
-// Nhúng kết nối CSDL và Models
-require_once 'config/Database.php';
-require_once 'models/User.php';
+// Định nghĩa ROOT_PATH để include file dễ dàng
+define('ROOT_PATH', dirname(__FILE__));
 
-// Nhúng các Controllers
-// Lưu ý: Đảm bảo các file này tồn tại trong thư mục controllers/
-require_once 'controllers/HomeController.php';
-require_once 'controllers/AuthController.php';
-require_once 'controllers/AdminController.php';
+require_once ROOT_PATH . '/config/Database.php';
+require_once ROOT_PATH . '/models/User.php';   // từ nhánh feature (cần cho Auth)
 
-// ------------------------------------------------------------------
-// 3. ĐIỀU HƯỚNG (ROUTING)
-// ------------------------------------------------------------------
-// Lấy thông tin từ URL. Ví dụ: index.php?controller=auth&action=login
-// Nếu không có, mặc định là controller='home' và action='index'
-$controller = isset($_GET['controller']) ? $_GET['controller'] : 'auth';
-$action     = isset($_GET['action']) ? $_GET['action'] : 'index';
 
-switch ($controller) {
-    
-    // --- CASE 1: TRANG CHỦ (HOME) ---
-    case 'home':
-        $home = new HomeController();
-        // Bạn cần đảm bảo file controllers/HomeController.php có hàm index()
-        $home->index(); 
-        break;
-
-    // --- CASE 2: XÁC THỰC (AUTH) - Đăng nhập/Đăng ký ---
-    case 'auth':
-        $auth = new AuthController();
-        switch ($action) {
-            case 'login':
-                $auth->login();      // Hiển thị form đăng nhập
-                break;
-            case 'checkLogin':
-                $auth->checkLogin(); // Xử lý kiểm tra đăng nhập
-                break;
-            case 'register':
-                $auth->register();   // Hiển thị form đăng ký (Mới thêm)
-                break;
-            case 'store':
-                $auth->store();      // Xử lý lưu đăng ký (Mới thêm)
-                break;
-            case 'logout':
-                $auth->login();     // Xử lý đăng xuất
-                break;
-            default:
-                $auth->login();      // Mặc định về trang login
-                break;
-        }
-        break;
-
-    // --- CASE 3: QUẢN TRỊ VIÊN (ADMIN) ---
-    case 'admin':
-        $admin = new AdminController();
-        switch ($action) {
-            case 'dashboard':
-                $admin->dashboard(); // Trang tổng quan thống kê
-                break;
-            case 'listUsers':
-                $admin->listUsers(); // Trang danh sách người dùng
-                break;
-            case 'deleteUser':
-                $admin->deleteUser();// Chức năng xóa người dùng
-                break;
-            default:
-                $admin->dashboard();
-                break;
-        }
-        break;
-
-    // --- CASE MẶC ĐỊNH: Lỗi 404 ---
-    default:
-        echo "<h1>404 Not Found</h1>";
-        echo "<p>Trang bạn tìm kiếm không tồn tại.</p>";
-        echo "<a href='index.php'>Quay về trang chủ</a>";
-        break;
+// ============================================================
+// 2. KẾT NỐI CƠ SỞ DỮ LIỆU
+// ============================================================
+try {
+    $db = new Database();
+    $dbConnection = $db->getConnection();
+} catch (Exception $e) {
+    die("Lỗi kết nối CSDL: " . $e->getMessage());
 }
+
+
+// ============================================================
+// 3. ROUTING – CHUẨN THEO NHÁNH MAIN (/controller/action)
+// ============================================================
+
+// Nếu không có tham số => home/index
+$url = isset($_GET['url']) ? $_GET['url'] : 'home/index';
+
+// Chuẩn hóa
+$url = filter_var(rtrim($url, '/'), FILTER_SANITIZE_URL);
+$urlArr = explode('/', $url);
+
+// Controller name
+$controllerName = ucfirst($urlArr[0]);
+$controllerClass = $controllerName . 'Controller';
+
+// Action name
+$action = isset($urlArr[1]) ? $urlArr[1] : 'index';
+
+// Params
+unset($urlArr[0], $urlArr[1]);
+$params = array_values($urlArr);
+
+
+// ============================================================
+// 4. LOAD CONTROLLER — KIỂM TRA TỒN TẠI
+// ============================================================
+$controllerPath = ROOT_PATH . '/controllers/' . $controllerClass . '.php';
+
+if (file_exists($controllerPath)) {
+    require_once $controllerPath;
+
+    // Kiểm tra Class
+    if (class_exists($controllerClass)) {
+        $controllerObject = new $controllerClass();
+
+        // Kiểm tra Action
+        if (method_exists($controllerObject, $action)) {
+
+            // Gọi controller/action
+            call_user_func_array([$controllerObject, $action], $params);
+
+        } else {
+            echo "Lỗi 404: Action '{$action}' không tồn tại trong {$controllerClass}.";
+        }
+    } else {
+        echo "Lỗi: Class '{$controllerClass}' không tồn tại.";
+    }
+} else {
+    echo "Lỗi 404: Controller '{$controllerName}' không tồn tại.";
+}
+
+?>
+<?php
+// ============================================================
+// 1. KHỞI ĐỘNG SESSION & CẤU HÌNH CƠ BẢN
+// ============================================================
+session_start();
+
+// Định nghĩa ROOT_PATH để include file dễ dàng
+define('ROOT_PATH', dirname(__FILE__));
+
+require_once ROOT_PATH . '/config/Database.php';
+require_once ROOT_PATH . '/models/User.php';   // từ nhánh feature (cần cho Auth)
+
+
+// ============================================================
+// 2. KẾT NỐI CƠ SỞ DỮ LIỆU
+// ============================================================
+try {
+    $db = new Database();
+    $dbConnection = $db->getConnection();
+} catch (Exception $e) {
+    die("Lỗi kết nối CSDL: " . $e->getMessage());
+}
+
+
+// ============================================================
+// 3. ROUTING – CHUẨN THEO NHÁNH MAIN (/controller/action)
+// ============================================================
+
+// Nếu không có tham số => home/index
+$url = isset($_GET['url']) ? $_GET['url'] : 'home/index';
+
+// Chuẩn hóa
+$url = filter_var(rtrim($url, '/'), FILTER_SANITIZE_URL);
+$urlArr = explode('/', $url);
+
+// Controller name
+$controllerName = ucfirst($urlArr[0]);
+$controllerClass = $controllerName . 'Controller';
+
+// Action name
+$action = isset($urlArr[1]) ? $urlArr[1] : 'index';
+
+// Params
+unset($urlArr[0], $urlArr[1]);
+$params = array_values($urlArr);
+
+
+// ============================================================
+// 4. LOAD CONTROLLER — KIỂM TRA TỒN TẠI
+// ============================================================
+$controllerPath = ROOT_PATH . '/controllers/' . $controllerClass . '.php';
+
+if (file_exists($controllerPath)) {
+    require_once $controllerPath;
+
+    // Kiểm tra Class
+    if (class_exists($controllerClass)) {
+        $controllerObject = new $controllerClass();
+
+        // Kiểm tra Action
+        if (method_exists($controllerObject, $action)) {
+
+            // Gọi controller/action
+            call_user_func_array([$controllerObject, $action], $params);
+
+        } else {
+            echo "Lỗi 404: Action '{$action}' không tồn tại trong {$controllerClass}.";
+        }
+    } else {
+        echo "Lỗi: Class '{$controllerClass}' không tồn tại.";
+    }
+} else {
+    echo "Lỗi 404: Controller '{$controllerName}' không tồn tại.";
+}
+
 ?>
