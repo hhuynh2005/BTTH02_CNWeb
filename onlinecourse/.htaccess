@@ -1,21 +1,4 @@
-#   Tệp cấu hình cho máy chủ Apache kích hoạt 
-# mod_rewrite để chuyển hướng mọi yêu cầu HTTP về tệp index.php
-#   Đảm bảo index.php là điểm tiếp nhận duy nhất 
-
-
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    
-    # Thay đổi /onlinecourse/ thành thư mục dự án thực tế của bạn trên localhost
-    # Nếu bạn để project ngay thư mục gốc htdocs thì comment dòng dưới lại
-    RewriteBase /onlinecourse/
-
-    # Không rewrite nếu request là file thực (hình ảnh, css, js...)
-    RewriteCond %{REQUEST_FILENAME} !-f
-    
-    # Không rewrite nếu request là thư mục thực
-    RewriteCond %{REQUEST_FILENAME} !-d
-
-    # Chuyển hướng mọi request khác về index.php và gán đường dẫn vào biến url
-    RewriteRule ^(.+)$ index.php?url=$1 [QSA,L]
-</IfModule>
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]

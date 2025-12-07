@@ -1,152 +1,88 @@
 <?php
-// ============================================================
-// 1. KHỞI ĐỘNG SESSION & CẤU HÌNH CƠ BẢN
-// ============================================================
-session_start();
+// Bật hiển thị lỗi PHP (chỉ nên dùng trong môi trường phát triển)
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-// Định nghĩa ROOT_PATH để include file dễ dàng
-define('ROOT_PATH', dirname(__FILE__));
-
-require_once ROOT_PATH . '/config/Database.php';
-require_once ROOT_PATH . '/models/User.php';   // từ nhánh feature (cần cho Auth)
-
-
-// ============================================================
-// 2. KẾT NỐI CƠ SỞ DỮ LIỆU
-// ============================================================
-try {
-    $db = new Database();
-    $dbConnection = $db->getConnection();
-} catch (Exception $e) {
-    die("Lỗi kết nối CSDL: " . $e->getMessage());
+// Bắt đầu Session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
+// ----------------------------------------------------
+// 1. Cấu hình & Định nghĩa Đường dẫn Tuyệt đối (ABSOLUTE PATHS)
+// ----------------------------------------------------
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', __DIR__);
+    define('CONTROLLERS_PATH', ROOT_PATH . '/controllers');
+    define('VIEWS_PATH', ROOT_PATH . '/views');
+    define('MODELS_PATH', ROOT_PATH . '/models');
+    define('CONFIG_PATH', ROOT_PATH . '/config');
+    // ⚠️ ĐỊNH NGHĨA BASE_URL ĐỂ DÙNG TRONG HTML (QUAN TRỌNG CHO ASSETS/FORM ACTION)
+    // Thay thế chuỗi này bằng đường dẫn gốc của bạn:
+    define('BASE_URL', '/cse485/BTTH02_CNWeb/onlinecourse');
+}
 
-// ============================================================
-// 3. ROUTING – CHUẨN THEO NHÁNH MAIN (/controller/action)
-// ============================================================
+// ----------------------------------------------------
+// 2. Tự động nạp lớp (Autoloading)
+// ----------------------------------------------------
+spl_autoload_register(function ($class) {
+    $file = '';
 
-// Nếu không có tham số => home/index
-$url = isset($_GET['url']) ? $_GET['url'] : 'home/index';
+    // Nạp Controller
+    if (strpos($class, 'Controller') !== false) {
+        $file = CONTROLLERS_PATH . '/' . $class . '.php';
+    }
+    // Nạp Model (Giả sử các lớp khác là Model)
+    else {
+        $file = MODELS_PATH . '/' . $class . '.php';
+    }
 
-// Chuẩn hóa
-$url = filter_var(rtrim($url, '/'), FILTER_SANITIZE_URL);
-$urlArr = explode('/', $url);
+    if (file_exists($file)) {
+        require_once $file;
+    }
+});
 
-// Controller name
-$controllerName = ucfirst($urlArr[0]);
-$controllerClass = $controllerName . 'Controller';
+// ----------------------------------------------------
+// 3. Phân tích URL (Routing cơ bản)
+// ----------------------------------------------------
 
-// Action name
-$action = isset($urlArr[1]) ? $urlArr[1] : 'index';
+$uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
 
-// Params
-unset($urlArr[0], $urlArr[1]);
-$params = array_values($urlArr);
+// Cắt bỏ phần Base Path
+$base_path_segments = trim(BASE_URL, '/');
+if (strpos($uri, $base_path_segments) === 0) {
+    $uri = substr($uri, strlen($base_path_segments));
+}
+$uri = trim($uri, '/'); // Loại bỏ dấu '/' còn sót
 
+$segments = explode('/', $uri);
 
-// ============================================================
-// 4. LOAD CONTROLLER — KIỂM TRA TỒN TẠI
-// ============================================================
-$controllerPath = ROOT_PATH . '/controllers/' . $controllerClass . '.php';
+$controllerName = !empty($segments[0]) ? ucfirst($segments[0]) . 'Controller' : 'HomeController';
+$actionName = !empty($segments[1]) ? $segments[1] : 'index';
 
-if (file_exists($controllerPath)) {
-    require_once $controllerPath;
+// ----------------------------------------------------
+// 4. Xử lý Yêu cầu (Dispatch)
+// ----------------------------------------------------
 
-    // Kiểm tra Class
-    if (class_exists($controllerClass)) {
-        $controllerObject = new $controllerClass();
+$controllerFile = CONTROLLERS_PATH . '/' . $controllerName . '.php';
 
-        // Kiểm tra Action
-        if (method_exists($controllerObject, $action)) {
+if (file_exists($controllerFile)) {
+    // Controller được nạp qua Autoload hoặc include nếu Autoload thất bại
 
-            // Gọi controller/action
-            call_user_func_array([$controllerObject, $action], $params);
+    if (!class_exists($controllerName)) {
+        require_once $controllerFile; // Đảm bảo lớp được định nghĩa
+    }
 
-        } else {
-            echo "Lỗi 404: Action '{$action}' không tồn tại trong {$controllerClass}.";
-        }
+    $controller = new $controllerName();
+
+    if (method_exists($controller, $actionName)) {
+        call_user_func_array([$controller, $actionName], array_slice($segments, 2));
     } else {
-        echo "Lỗi: Class '{$controllerClass}' không tồn tại.";
+        // Lỗi 404 cho Action
+        echo "Lỗi 404: Action '{$actionName}' không tồn tại trong Controller '{$controllerName}'";
     }
 } else {
+    // Lỗi 404 cho Controller
     echo "Lỗi 404: Controller '{$controllerName}' không tồn tại.";
 }
-
-?>
-<?php
-// ============================================================
-// 1. KHỞI ĐỘNG SESSION & CẤU HÌNH CƠ BẢN
-// ============================================================
-session_start();
-
-// Định nghĩa ROOT_PATH để include file dễ dàng
-define('ROOT_PATH', dirname(__FILE__));
-
-require_once ROOT_PATH . '/config/Database.php';
-require_once ROOT_PATH . '/models/User.php';   // từ nhánh feature (cần cho Auth)
-
-
-// ============================================================
-// 2. KẾT NỐI CƠ SỞ DỮ LIỆU
-// ============================================================
-try {
-    $db = new Database();
-    $dbConnection = $db->getConnection();
-} catch (Exception $e) {
-    die("Lỗi kết nối CSDL: " . $e->getMessage());
-}
-
-
-// ============================================================
-// 3. ROUTING – CHUẨN THEO NHÁNH MAIN (/controller/action)
-// ============================================================
-
-// Nếu không có tham số => home/index
-$url = isset($_GET['url']) ? $_GET['url'] : 'home/index';
-
-// Chuẩn hóa
-$url = filter_var(rtrim($url, '/'), FILTER_SANITIZE_URL);
-$urlArr = explode('/', $url);
-
-// Controller name
-$controllerName = ucfirst($urlArr[0]);
-$controllerClass = $controllerName . 'Controller';
-
-// Action name
-$action = isset($urlArr[1]) ? $urlArr[1] : 'index';
-
-// Params
-unset($urlArr[0], $urlArr[1]);
-$params = array_values($urlArr);
-
-
-// ============================================================
-// 4. LOAD CONTROLLER — KIỂM TRA TỒN TẠI
-// ============================================================
-$controllerPath = ROOT_PATH . '/controllers/' . $controllerClass . '.php';
-
-if (file_exists($controllerPath)) {
-    require_once $controllerPath;
-
-    // Kiểm tra Class
-    if (class_exists($controllerClass)) {
-        $controllerObject = new $controllerClass();
-
-        // Kiểm tra Action
-        if (method_exists($controllerObject, $action)) {
-
-            // Gọi controller/action
-            call_user_func_array([$controllerObject, $action], $params);
-
-        } else {
-            echo "Lỗi 404: Action '{$action}' không tồn tại trong {$controllerClass}.";
-        }
-    } else {
-        echo "Lỗi: Class '{$controllerClass}' không tồn tại.";
-    }
-} else {
-    echo "Lỗi 404: Controller '{$controllerName}' không tồn tại.";
-}
-
 ?>
