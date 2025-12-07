@@ -1,21 +1,77 @@
 <?php
-// Sử dụng cấu trúc thư mục từ tài liệu hướng dẫn 
-require_once 'models/Course.php';
-// Giả sử có hàm loadView để tải file view
+// File: controllers/CourseController.php
+
+// Load các Models cần thiết
+if (file_exists('models/Course.php')) require_once 'models/Course.php';
+if (file_exists('models/Category.php')) require_once 'models/Category.php';
+if (file_exists('models/Lesson.php')) require_once 'models/Lesson.php';
+if (file_exists('models/User.php')) require_once 'models/User.php';
 
 class CourseController
 {
     private $courseModel;
+    private $categoryModel;
+    private $lessonModel;
 
     public function __construct()
     {
         $this->courseModel = new Course();
+        $this->categoryModel = new Category();
+        $this->lessonModel = new Lesson();
     }
 
-    // Hàm kiểm tra quyền Giảng viên (Role = 1 [cite: 28])
+    // =====================================================================
+    // PHẦN 1: PUBLIC / STUDENT (main)
+    // =====================================================================
+
+    // Hiển thị danh sách khóa học
+    public function index()
+    {
+        $categories = $this->categoryModel->getAll();
+
+        $categoryId = isset($_GET['category_id']) ? $_GET['category_id'] : null;
+
+        if ($categoryId) {
+            $courses = $this->courseModel->getByCategory($categoryId);
+        } else {
+            $courses = $this->courseModel->getAllPublic();
+        }
+
+        require_once 'views/courses/index.php';
+    }
+
+    // Tìm kiếm khóa học
+    public function search()
+    {
+        $keyword = $_GET['keyword'] ?? '';
+
+        $categories = $this->categoryModel->getAll();
+        $courses = $this->courseModel->search($keyword);
+
+        require_once 'views/courses/index.php';
+    }
+
+    // Hiển thị chi tiết khóa học + danh sách bài học
+    public function detail($id)
+    {
+        $course = $this->courseModel->getById($id);
+
+        if (!$course) {
+            echo "Khóa học không tồn tại!";
+            return;
+        }
+
+        $lessons = $this->lessonModel->getByCourseId($id);
+
+        require_once 'views/courses/detail.php';
+    }
+
+    // =====================================================================
+    // PHẦN 2: INSTRUCTOR CRUD (feature/course-lesson-crud)
+    // =====================================================================
+
     private function checkInstructorAccess()
     {
-        // LƯU Ý: Phải có Session sau khi Đăng nhập (Công việc của Nhóm 1)
         if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] != 1) {
             header('Location: /login');
             exit();
@@ -23,33 +79,32 @@ class CourseController
         return $_SESSION['user_id'];
     }
 
-    // 1. Quản lý Khóa học (READ List)
+    // Quản lý khóa học của giảng viên
     public function manage()
     {
         $instructor_id = $this->checkInstructorAccess();
 
-        // Lấy danh sách khóa học của giảng viên này
-        $courses = $this->courseModel->getAllByInstructorId($instructor_id)->fetchAll(PDO::FETCH_ASSOC);
+        $courses = $this->courseModel
+            ->getAllByInstructorId($instructor_id)
+            ->fetchAll(PDO::FETCH_ASSOC);
 
         $this->loadView('instructor/course/manage', ['courses' => $courses]);
     }
 
-    // 2. Xử lý Tạo Khóa học (GET: hiển thị form, POST: xử lý data)
+    // Tạo khóa học
     public function create()
     {
         $instructor_id = $this->checkInstructorAccess();
-        $categories = $this->courseModel->getAllCategories()->fetchAll(PDO::FETCH_ASSOC);
+        $categories = $this->categoryModel->getAll();
         $error = null;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Lấy tên ảnh (Chức năng Upload chi tiết thuộc về Nhóm 4 [cite: 96])
+
             $image_name = '';
             if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
                 $image_name = basename($_FILES["image"]["name"]);
-                // ... Xử lý upload file ở đây ...
             }
 
-            // Kiểm tra dữ liệu bắt buộc (Validation cơ bản)
             if (empty($_POST['title']) || empty($_POST['category_id']) || (float)$_POST['price'] < 0) {
                 $error = "Vui lòng điền đủ Tiêu đề, Danh mục và Giá tiền không âm.";
             } else {
@@ -73,30 +128,30 @@ class CourseController
             }
         }
 
-        // Tải View hiển thị Form CREATE
-        $this->loadView('instructor/course/create', ['categories' => $categories, 'error' => $error]);
+        $this->loadView('instructor/course/create', [
+            'categories' => $categories,
+            'error' => $error
+        ]);
     }
 
-    // 3. Chỉnh sửa Khóa học (GET: hiển thị form, POST: xử lý update)
-    public function edit(int $id)
+    // Chỉnh sửa khóa học
+    public function edit($id)
     {
         $instructor_id = $this->checkInstructorAccess();
         $course = $this->courseModel->getById($id);
-        $categories = $this->courseModel->getAllCategories()->fetchAll(PDO::FETCH_ASSOC);
+        $categories = $this->categoryModel->getAll();
 
-        // Kiểm tra quyền sở hữu [cite: 100]
         if (!$course || $course['instructor_id'] != $instructor_id) {
             header('Location: /instructor/course/manage?error=unauthorized');
             exit();
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $image_name = $course['image']; // Giữ ảnh cũ
 
-            // Nếu có upload ảnh mới
-            if (isset($_FILES['image']) && $_FILES['image']['error'] == 0 && !empty($_FILES['image']['name'])) {
+            $image_name = $course['image'];
+
+            if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
                 $image_name = basename($_FILES["image"]["name"]);
-                // ... Xử lý upload file mới ...
             }
 
             $result = $this->courseModel->update(
@@ -118,24 +173,25 @@ class CourseController
             }
         }
 
-        // Tải View hiển thị Form EDIT
-        $this->loadView('instructor/course/edit', ['course' => $course, 'categories' => $categories, 'error' => $error ?? null]);
+        $this->loadView('instructor/course/edit', [
+            'course' => $course,
+            'categories' => $categories,
+            'error' => $error ?? null
+        ]);
     }
 
-    // 4. Xóa Khóa học (DELETE)
-    public function delete(int $id)
+    // Xóa khóa học
+    public function delete($id)
     {
         $instructor_id = $this->checkInstructorAccess();
         $course = $this->courseModel->getById($id);
 
-        // Kiểm tra quyền sở hữu [cite: 100]
         if (!$course || $course['instructor_id'] != $instructor_id) {
             header('Location: /instructor/course/manage?error=unauthorized_delete');
             exit();
         }
 
         if ($this->courseModel->delete($id)) {
-            // (Thêm logic xóa file ảnh đại diện khỏi server nếu cần)
             header('Location: /instructor/course/manage?success=deleted');
             exit();
         } else {
@@ -144,3 +200,4 @@ class CourseController
         }
     }
 }
+?>
