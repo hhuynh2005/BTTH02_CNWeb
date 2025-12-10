@@ -113,15 +113,30 @@ elseif (strpos($uri, 'lesson/') === 0) {
     $parts = explode('/', substr($uri, 7)); // Bỏ "lesson/"
     $actionName = $parts[0] ?? 'index';
     $params = array_slice($parts, 1);
+
+    // BỔ SUNG ROUTE CHO TÀI LIỆU
+    if ($actionName === 'materials' && count($params) === 1) { // lesson/materials/{id}
+        $actionName = 'materials';
+    } elseif ($actionName === 'uploadmaterialform' && count($params) === 1) { // lesson/uploadMaterialForm/{id}
+        $actionName = 'uploadMaterialForm';
+    } elseif ($actionName === 'uploadmaterial' && $_SERVER['REQUEST_METHOD'] === 'POST') { // lesson/uploadMaterial (POST)
+        $actionName = 'uploadMaterial';
+        $params = []; // Lấy dữ liệu từ POST
+    }
 }
-// >>> KHẮC PHỤC LỖI InstructorController: Thêm rule cho Enrollment/Progress
+// >>> BẮT ROUTE CHI TIẾT TIẾN ĐỘ CỦA GIẢNG VIÊN (enrollment/progress/cid/sid)
+elseif (preg_match('/^enrollment\/progress\/(\d+)\/(\d+)$/', $uri, $matches)) {
+    $controllerName = 'EnrollmentController';
+    $actionName = 'progressDetail';
+    $params = array_slice($matches, 1);
+}
+// Route cho Enrollment (Học viên)
 elseif (strpos($uri, 'enrollment/') === 0) {
     $controllerName = 'EnrollmentController';
     $parts = explode('/', substr($uri, 11)); // Bỏ "enrollment/"
     $actionName = $parts[0] ?? 'dashboard';
     $params = array_slice($parts, 1);
 
-    // Xử lý trường hợp URL có tham số thứ 2 (ví dụ: enrollment/listStudents/1)
     if (count($parts) > 1 && $parts[0] !== 'register' && $parts[0] !== 'my_courses' && $parts[0] !== 'dashboard') {
         $actionName = $parts[0];
         $params = array_slice($parts, 1);
@@ -150,28 +165,37 @@ else {
     // Trường hợp 1: Instructor enrollments/progress (đường dẫn alias cũ)
     if (strtolower($parts[0]) === 'instructor') {
         if (!empty($parts[1]) && strtolower($parts[1]) === 'enrollments') {
-            // Chuyển sang EnrollmentController@listStudents (nếu có ID) hoặc EnrollmentController@instructorEnrollmentsList (nếu không có ID)
+
             $controllerName = 'EnrollmentController';
-            $actionName = 'listStudents'; // Hoặc instructorEnrollmentsList nếu không có ID khóa học
+            $actionName = 'listStudents';
             $params = array_slice($parts, 2);
+
             if (empty($params)) {
-                $actionName = 'instructorEnrollmentsList';
+                $actionName = 'instructorEnrollmentsSummary';
             }
-        } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'progress') {
+
             $controllerName = 'EnrollmentController';
-            $actionName = 'progress';
+        } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'progress') {
+
+            $controllerName = 'EnrollmentController';
+            $actionName = 'progressOverview';
             $params = array_slice($parts, 2);
+
+            if (!empty($params)) {
+                $actionName = 'progress';
+            }
+
         }
     }
 
-    // Trường hợp 2: Các alias cũ còn lại (instructor/courses, instructor/createCourse, v.v.)
-    if (!isset($controllerName)) {
+    // Trường hợp 2: Các alias cũ còn lại...
+    if (!isset($controllerName) || (isset($parts[0]) && strtolower($parts[0]) !== 'instructor')) {
         $controllerName = !empty($parts[0]) ? ucfirst($parts[0]) . 'Controller' : 'HomeController';
         $actionName = !empty($parts[1]) ? $parts[1] : 'index';
         $params = array_slice($parts, 2);
     }
 
-    // Xử lý các trường hợp URL cố gắng gọi instructor cũ: /instructor/courses, /instructor/createCourse, ...
+    // Xử lý các trường hợp URL cố gắng gọi instructor cũ
     if (strtolower($parts[0]) === 'instructor') {
         if (!empty($parts[1]) && strtolower($parts[1]) === 'courses') {
             $controllerName = 'CourseController';
@@ -252,7 +276,7 @@ if (file_exists($controllerFile)) {
 // ====================================================
 function showError($message)
 {
-    // Nội dung hàm showError giữ nguyên (dùng cho debug và hiển thị lỗi)
+    // Nội dung hàm showError giữ nguyên
     echo '
     <!DOCTYPE html>
     <html lang="vi">
@@ -340,4 +364,3 @@ function showError($message)
     </html>';
     exit();
 }
-?>

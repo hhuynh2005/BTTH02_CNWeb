@@ -95,7 +95,8 @@
             <?php endif; ?>
 
             <!-- Form -->
-            <form action="<?php echo BASE_URL; ?>/course/updateLesson/<?php echo $lesson['id']; ?>" method="POST"
+            <form action="<?php echo BASE_URL; ?>/lesson/update/<?php echo $lesson['id']; ?>" method="POST"
+                id="lessonForm">
                 id="lessonForm">
                 <div class="card">
                     <div class="card-header">

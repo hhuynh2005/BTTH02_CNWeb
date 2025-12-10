@@ -87,7 +87,8 @@
             <?php endif; ?>
 
             <!-- Form -->
-            <form action="<?php echo BASE_URL; ?>/course/storeLesson/<?php echo $course['id']; ?>" method="POST"
+            <form action="<?php echo BASE_URL; ?>/lesson/store/<?php echo $course['id']; ?>" method="POST"
+                id="lessonForm">
                 id="lessonForm">
                 <div class="card">
                     <div class="card-header">
