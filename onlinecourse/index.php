@@ -74,9 +74,6 @@ $requestUri = parse_url($requestUri, PHP_URL_PATH);
 // Chuẩn hóa URI (loại bỏ / ở đầu và cuối)
 $uri = trim($requestUri, '/');
 
-// DEBUG: In thông tin URI
-// echo "URI: " . $uri . "<br>";
-
 // Xác định controller và action dựa trên URI
 $controllerName = 'HomeController';
 $actionName = 'index';
@@ -114,8 +111,21 @@ elseif (strpos($uri, 'course/') === 0) {
 elseif (strpos($uri, 'lesson/') === 0) {
     $controllerName = 'LessonController';
     $parts = explode('/', substr($uri, 7)); // Bỏ "lesson/"
-    $actionName = $parts[0] ?? 'index'; // Mặc định là action 'index' hoặc 'manage'
+    $actionName = $parts[0] ?? 'index';
     $params = array_slice($parts, 1);
+}
+// >>> KHẮC PHỤC LỖI InstructorController: Thêm rule cho Enrollment/Progress
+elseif (strpos($uri, 'enrollment/') === 0) {
+    $controllerName = 'EnrollmentController';
+    $parts = explode('/', substr($uri, 11)); // Bỏ "enrollment/"
+    $actionName = $parts[0] ?? 'dashboard';
+    $params = array_slice($parts, 1);
+
+    // Xử lý trường hợp URL có tham số thứ 2 (ví dụ: enrollment/listStudents/1)
+    if (count($parts) > 1 && $parts[0] !== 'register' && $parts[0] !== 'my_courses' && $parts[0] !== 'dashboard') {
+        $actionName = $parts[0];
+        $params = array_slice($parts, 1);
+    }
 }
 // Route cho Courses (public)
 elseif ($uri === 'courses') {
@@ -133,42 +143,57 @@ elseif (strpos($uri, 'courses/search') === 0) {
     $controllerName = 'CourseController';
     $actionName = 'search';
 }
-// Route mặc định khác
+// Route mặc định khác và xử lý alias/routes cũ
 else {
     $parts = explode('/', $uri);
-    $controllerName = !empty($parts[0]) ? ucfirst($parts[0]) . 'Controller' : 'HomeController';
-    $actionName = !empty($parts[1]) ? $parts[1] : 'index';
-    $params = array_slice($parts, 2);
 
-    // Xử lý trường hợp URL cố gắng gọi instructor cũ: /instructor/courses
-    if (strtolower($parts[0]) === 'instructor' && !empty($parts[1]) && strtolower($parts[1]) === 'courses') {
-        $controllerName = 'CourseController';
-        $actionName = 'manage';
+    // Trường hợp 1: Instructor enrollments/progress (đường dẫn alias cũ)
+    if (strtolower($parts[0]) === 'instructor') {
+        if (!empty($parts[1]) && strtolower($parts[1]) === 'enrollments') {
+            // Chuyển sang EnrollmentController@listStudents (nếu có ID) hoặc EnrollmentController@instructorEnrollmentsList (nếu không có ID)
+            $controllerName = 'EnrollmentController';
+            $actionName = 'listStudents'; // Hoặc instructorEnrollmentsList nếu không có ID khóa học
+            $params = array_slice($parts, 2);
+            if (empty($params)) {
+                $actionName = 'instructorEnrollmentsList';
+            }
+        } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'progress') {
+            $controllerName = 'EnrollmentController';
+            $actionName = 'progress';
+            $params = array_slice($parts, 2);
+        }
+    }
+
+    // Trường hợp 2: Các alias cũ còn lại (instructor/courses, instructor/createCourse, v.v.)
+    if (!isset($controllerName)) {
+        $controllerName = !empty($parts[0]) ? ucfirst($parts[0]) . 'Controller' : 'HomeController';
+        $actionName = !empty($parts[1]) ? $parts[1] : 'index';
         $params = array_slice($parts, 2);
     }
-    // Xử lý trường hợp URL cố gắng gọi instructor cũ: /instructor/createCourse
-    elseif (strtolower($parts[0]) === 'instructor' && !empty($parts[1]) && strtolower($parts[1]) === 'createcourse') {
-        $controllerName = 'CourseController';
-        $actionName = 'create';
-        $params = array_slice($parts, 2);
-    }
-    // Xử lý trường hợp URL cố gắng gọi instructor cũ: /instructor/editCourse
-    elseif (strtolower($parts[0]) === 'instructor' && !empty($parts[1]) && strtolower($parts[1]) === 'editcourse') {
-        $controllerName = 'CourseController';
-        $actionName = 'edit';
-        $params = array_slice($parts, 2);
-    }
-    // Xử lý trường hợp URL cố gắng gọi instructor cũ: /instructor/deleteCourse
-    elseif (strtolower($parts[0]) === 'instructor' && !empty($parts[1]) && strtolower($parts[1]) === 'deletecourse') {
-        $controllerName = 'CourseController';
-        $actionName = 'delete';
-        $params = array_slice($parts, 2);
-    }
-    // Xử lý trường hợp URL cố gắng gọi instructor cũ: /instructor/lessons/123
-    elseif (strtolower($parts[0]) === 'instructor' && !empty($parts[1]) && strtolower($parts[1]) === 'lessons') {
-        $controllerName = 'LessonController';
-        $actionName = 'manage';
-        $params = array_slice($parts, 2);
+
+    // Xử lý các trường hợp URL cố gắng gọi instructor cũ: /instructor/courses, /instructor/createCourse, ...
+    if (strtolower($parts[0]) === 'instructor') {
+        if (!empty($parts[1]) && strtolower($parts[1]) === 'courses') {
+            $controllerName = 'CourseController';
+            $actionName = 'manage';
+            $params = array_slice($parts, 2);
+        } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'createcourse') {
+            $controllerName = 'CourseController';
+            $actionName = 'create';
+            $params = array_slice($parts, 2);
+        } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'editcourse') {
+            $controllerName = 'CourseController';
+            $actionName = 'edit';
+            $params = array_slice($parts, 2);
+        } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'deletecourse') {
+            $controllerName = 'CourseController';
+            $actionName = 'delete';
+            $params = array_slice($parts, 2);
+        } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'lessons') {
+            $controllerName = 'LessonController';
+            $actionName = 'manage';
+            $params = array_slice($parts, 2);
+        }
     }
 }
 
@@ -182,18 +207,6 @@ if (strpos($actionName, '-') !== false) {
 // ====================================================
 
 $controllerFile = CONTROLLERS_PATH . '/' . $controllerName . '.php';
-
-// DEBUG: In thông tin routing
-/*
-echo "<div style='background:#f0f0f0; padding:10px; margin:10px; border:1px solid #ccc;'>";
-echo "<strong>ROUTER DEBUG:</strong><br>";
-echo "URI: " . htmlspecialchars($uri) . "<br>";
-echo "Controller: " . $controllerName . "<br>";
-echo "Action: " . $actionName . "<br>";
-echo "Params: " . json_encode($params) . "<br>";
-echo "File: " . $controllerFile . "<br>";
-echo "</div>";
-*/
 
 // Kiểm tra file controller tồn tại
 if (file_exists($controllerFile)) {
@@ -239,7 +252,7 @@ if (file_exists($controllerFile)) {
 // ====================================================
 function showError($message)
 {
-    // Nội dung hàm showError giữ nguyên
+    // Nội dung hàm showError giữ nguyên (dùng cho debug và hiển thị lỗi)
     echo '
     <!DOCTYPE html>
     <html lang="vi">
