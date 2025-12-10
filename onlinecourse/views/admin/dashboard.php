@@ -1,3 +1,12 @@
+<?php
+// File: views/admin/dashboard.php
+// Dữ liệu cần: $count['total'], $count['student'], $count['instructor'], $count['admin']
+// Giả định các biến $count đã được tính toán trong AdminController::dashboard()
+// và BASE_URL, $_SESSION['fullname'] đã có.
+
+// Thiết lập các biến nếu chưa tồn tại (để tránh lỗi undefined variable)
+$count = $count ?? ['total' => 0, 'student' => 0, 'instructor' => 0, 'admin' => 0];
+?>
 <!DOCTYPE html>
 <html lang="vi">
 
@@ -7,10 +16,196 @@
     <title>Dashboard Admin - Online Course</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/style.css">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Bổ sung CSS cho Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            padding: 1.5rem;
+        }
+
+        .stat-icon {
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 1rem;
+            color: #fff;
+        }
+
+        .stat-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .stat-info h3 {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        /* Colors for stat icons */
+        .primary {
+            background-color: #4f46e5;
+        }
+
+        .success {
+            background-color: #10b981;
+        }
+
+        .warning {
+            background-color: #f59e0b;
+        }
+
+        .danger {
+            background-color: #ef4444;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .btn-outline {
+            border: 1px solid #4f46e5;
+            color: #4f46e5;
+            background: #fff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.3s;
+        }
+
+        .btn-outline:hover {
+            background: #f0f4ff;
+        }
+
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.3s;
+        }
+
+        .btn-primary:hover {
+            background: #3a0ca3;
+        }
+
+        /* Layout CSS from your original file */
+        .admin-layout {
+            display: flex;
+        }
+
+        .admin-sidebar {
+            width: 250px;
+            background: #1e293b;
+            color: white;
+            height: calc(100vh - 60px);
+            padding-top: 1rem;
+        }
+
+        .admin-content {
+            flex-grow: 1;
+            padding: 1.5rem;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 1.5rem;
+            text-decoration: none;
+            color: #cbd5e1;
+            transition: background 0.3s;
+        }
+
+        .sidebar-item:hover,
+        .sidebar-item.active {
+            background: #334155;
+            color: #fff;
+        }
+
+        .sidebar-item i {
+            margin-right: 10px;
+        }
+
+        /* Đã sửa SVG thành i cho đồng bộ */
+        .content-header h1 {
+            color: #1e293b;
+            border-bottom: none;
+        }
+
+        .navbar {
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            height: 60px;
+        }
+
+        .navbar-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #4f46e5;
+        }
+
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+    </style>
 </head>
 
 <body>
-    <!-- Navbar -->
     <nav class="navbar">
         <div class="container navbar-container">
             <div class="navbar-brand">
@@ -23,63 +218,47 @@
                 <span>Online Course - Admin</span>
             </div>
             <div class="navbar-actions">
-                <span>Xin chào, <strong><?php echo htmlspecialchars($_SESSION['fullname']); ?></strong></span>
-                <a href="<?php echo BASE_URL; ?>/auth/logout" class="btn btn-danger btn-sm">Đăng xuất</a>
+                <span>Xin chào,
+                    <strong><?php echo htmlspecialchars($_SESSION['fullname'] ?? 'Admin'); ?></strong></span>
+                <a href="<?php echo BASE_URL; ?>/auth/logout" class="btn btn-danger btn-sm"
+                    style="padding: 5px 10px; text-decoration: none; border-radius: 4px; color: white; background: #ef4444;">Đăng
+                    xuất</a>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <div class="admin-layout">
-        <!-- Sidebar -->
         <aside class="admin-sidebar">
             <div class="sidebar-menu">
                 <a href="<?php echo BASE_URL; ?>/admin/dashboard" class="sidebar-item active">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                    </svg>
-                    Dashboard
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
                 <a href="<?php echo BASE_URL; ?>/admin/users" class="sidebar-item">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                    </svg>
-                    Quản lý người dùng
+                    <i class="fas fa-users"></i> Quản lý người dùng
                 </a>
                 <a href="<?php echo BASE_URL; ?>/admin/categories" class="sidebar-item">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-                    </svg>
-                    Danh mục
+                    <i class="fas fa-list"></i> Danh mục
                 </a>
-                <a href="<?php echo BASE_URL; ?>/admin/courses" class="sidebar-item">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z" />
-                    </svg>
-                    Khóa học
+                <a href="<?php echo BASE_URL; ?>/admin/systemStatistics" class="sidebar-item">
+                    <i class="fas fa-chart-bar"></i> Thống kê Hệ thống
+                </a>
+                <a href="<?php echo BASE_URL; ?>/admin/courseApproval" class="sidebar-item">
+                    <i class="fas fa-check-circle"></i> Duyệt khóa học
                 </a>
             </div>
         </aside>
 
-        <!-- Content Area -->
         <main class="admin-content">
             <div class="content-header">
-                <h1>Dashboard</h1>
+                <h1><i class="fas fa-chart-line"></i> Dashboard</h1>
                 <p>Tổng quan về hệ thống</p>
             </div>
 
-            <!-- Statistics Cards -->
+
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon primary">
-                        <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor">
-                            <path
-                                d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                        </svg>
+                        <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-info">
                         <h3>Tổng người dùng</h3>
@@ -89,9 +268,7 @@
 
                 <div class="stat-card">
                     <div class="stat-icon success">
-                        <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                        </svg>
+                        <i class="fas fa-user-graduate"></i>
                     </div>
                     <div class="stat-info">
                         <h3>Học viên</h3>
@@ -101,10 +278,7 @@
 
                 <div class="stat-card">
                     <div class="stat-icon warning">
-                        <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor">
-                            <path
-                                d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z" />
-                        </svg>
+                        <i class="fas fa-chalkboard-teacher"></i>
                     </div>
                     <div class="stat-info">
                         <h3>Giảng viên</h3>
@@ -114,10 +288,7 @@
 
                 <div class="stat-card">
                     <div class="stat-icon danger">
-                        <svg width="32" height="32" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" />
-                        </svg>
+                        <i class="fas fa-user-shield"></i>
                     </div>
                     <div class="stat-info">
                         <h3>Quản trị viên</h3>
@@ -126,7 +297,6 @@
                 </div>
             </div>
 
-            <!-- Quick Actions -->
             <div class="card">
                 <div class="card-header">
                     <h3>Hành động nhanh</h3>
@@ -135,36 +305,33 @@
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                         <a href="<?php echo BASE_URL; ?>/admin/users" class="btn btn-outline"
                             style="justify-content: center;">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                    d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                            </svg>
-                            Quản lý người dùng
+                            <i class="fas fa-users"></i> Quản lý người dùng
                         </a>
                         <a href="<?php echo BASE_URL; ?>/admin/categories" class="btn btn-outline"
                             style="justify-content: center;">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                    d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-                            </svg>
-                            Quản lý danh mục
+                            <i class="fas fa-list"></i> Quản lý danh mục
                         </a>
-                        <a href="<?php echo BASE_URL; ?>/admin/courses" class="btn btn-outline"
+                        <a href="<?php echo BASE_URL; ?>/admin/systemStatistics" class="btn btn-outline"
                             style="justify-content: center;">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                    d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3z" />
-                            </svg>
-                            Quản lý khóa học
+                            <i class="fas fa-chart-bar"></i> Thống kê Hệ thống
+                        </a>
+                        <a href="<?php echo BASE_URL; ?>/admin/courseApproval" class="btn btn-outline"
+                            style="justify-content: center;">
+                            <i class="fas fa-check-circle"></i> Duyệt khóa học
                         </a>
                         <a href="<?php echo BASE_URL; ?>/" class="btn btn-primary" style="justify-content: center;">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                    d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                            </svg>
-                            Về trang chủ
+                            <i class="fas fa-home"></i> Về trang chủ
                         </a>
                     </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>Hoạt động gần đây</h3>
+                </div>
+                <div class="card-body">
+                    <p>Không có dữ liệu hoạt động gần đây.</p>
                 </div>
             </div>
         </main>

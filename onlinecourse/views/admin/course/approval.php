@@ -1,7 +1,8 @@
 <?php
-// File: views/admin/categories/list.php
-// Dữ liệu cần: $categories (danh sách danh mục)
-$categories = $categories ?? [];
+// File: views/admin/course/approval.php
+// Dữ liệu cần: $pendingCourses (danh sách khóa học chờ duyệt)
+$pendingCourses = $pendingCourses ?? [];
+// Giả định BASE_URL, $_SESSION['fullname'] đã có
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -9,12 +10,12 @@ $categories = $categories ?? [];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Danh mục - Admin</title>
+    <title>Duyệt Khóa học - Admin</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/style.css">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* CSS Đồng bộ */
+        /* CSS Đồng bộ (Lấy từ Dashboard và các trang quản lý) */
         .admin-layout {
             display: flex;
         }
@@ -30,6 +31,8 @@ $categories = $categories ?? [];
         .admin-content {
             flex-grow: 1;
             padding: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .sidebar-item {
@@ -41,14 +44,14 @@ $categories = $categories ?? [];
             transition: background 0.3s;
         }
 
+        .sidebar-item i {
+            margin-right: 10px;
+        }
+
         .sidebar-item:hover,
         .sidebar-item.active {
             background: #334155;
             color: #fff;
-        }
-
-        .sidebar-item i {
-            margin-right: 10px;
         }
 
         .content-header h1 {
@@ -68,7 +71,7 @@ $categories = $categories ?? [];
         .data-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 0;
         }
 
         .data-table th,
@@ -90,49 +93,60 @@ $categories = $categories ?? [];
             background-color: #f8fafc;
         }
 
-        .action-btn {
-            color: #4f46e5;
-            margin-left: 5px;
-            text-decoration: none;
-            padding: 5px;
-            border-radius: 4px;
-            transition: background 0.3s;
-        }
-
-        .text-warning {
-            color: #f59e0b;
-        }
-
-        .text-danger {
-            color: #ef4444;
-        }
-
-        .btn-primary {
-            background: #4f46e5;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 6px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
+        /* Buttons */
+        .btn-action-group {
+            display: flex;
             gap: 5px;
-            transition: background 0.3s;
         }
 
-        .btn-success {
+        .btn-approve {
             background: #10b981;
             color: white;
-            padding: 10px 15px;
-            border-radius: 6px;
+            padding: 6px 10px;
+            border-radius: 4px;
             text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            transition: background 0.3s;
+            font-size: 13px;
+            transition: background 0.2s;
         }
 
-        .btn-success:hover {
+        .btn-approve:hover {
             background: #047857;
+        }
+
+        .btn-reject {
+            background: #ef4444;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .btn-reject:hover {
+            background: #b91c1c;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .alert-info {
+            background-color: #f0f8ff;
+            border: 1px solid #b3e5fc;
         }
 
         /* Navbar CSS */
@@ -198,13 +212,13 @@ $categories = $categories ?? [];
                 <a href="<?php echo BASE_URL; ?>/admin/users" class="sidebar-item">
                     <i class="fas fa-users"></i> Quản lý người dùng
                 </a>
-                <a href="<?php echo BASE_URL; ?>/admin/categories" class="sidebar-item active">
+                <a href="<?php echo BASE_URL; ?>/admin/categories" class="sidebar-item">
                     <i class="fas fa-list"></i> Danh mục
                 </a>
                 <a href="<?php echo BASE_URL; ?>/admin/systemStatistics" class="sidebar-item">
                     <i class="fas fa-chart-bar"></i> Thống kê Hệ thống
                 </a>
-                <a href="<?php echo BASE_URL; ?>/admin/courseApproval" class="sidebar-item">
+                <a href="<?php echo BASE_URL; ?>/admin/courseApproval" class="sidebar-item active">
                     <i class="fas fa-check-circle"></i> Duyệt khóa học
                 </a>
             </div>
@@ -213,56 +227,58 @@ $categories = $categories ?? [];
         <main class="admin-content">
 
             <div class="content-header">
-                <h1><i class="fas fa-list-alt"></i> Quản lý Danh mục Khóa học</h1>
-                <p>Tạo, sửa, và xóa các danh mục cho hệ thống.</p>
+                <h1><i class="fas fa-check-circle"></i> Duyệt Khóa học</h1>
+                <p>Danh sách các khóa học đang chờ được phê duyệt.</p>
             </div>
 
-            <?php if (isset($_GET['msg'])): ?>
-                <div class="alert alert-success"
-                    style="background-color: #d4edda; color: #155724; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-                    <?php echo htmlspecialchars($_GET['msg']); ?>
+            <?php
+            // Hiển thị thông báo (sử dụng session nếu có, hoặc GET msg)
+            $msg = $_GET['msg'] ?? ($_SESSION['message'] ?? null);
+            $msg_type = $_SESSION['message_type'] ?? (strpos($msg, '✅') !== false ? 'success' : 'error');
+
+            if (isset($msg)): ?>
+                <div class="alert alert-<?php echo $msg_type; ?>">
+                    <?php echo htmlspecialchars($msg); ?>
                 </div>
-            <?php endif; ?>
+                <?php
+                // Xóa session messages sau khi hiển thị
+                unset($_SESSION['message']);
+                unset($_SESSION['message_type']);
+            endif;
+            ?>
 
-            <div style="margin-bottom: 20px;">
-                <a href="<?php echo BASE_URL; ?>/admin/createCategory" class="btn btn-success">
-                    <i class="fas fa-plus"></i> Thêm Danh mục mới
-                </a>
-            </div>
-
-            <?php if (!empty($categories)): ?>
+            <?php if (!empty($pendingCourses)): ?>
                 <div style="overflow-x: auto;" class="card">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Tên Danh mục</th>
-                                <th>Mô tả</th>
-                                <th>Khóa học</th>
+                                <th>Tên Khóa học</th>
+                                <th>Giảng viên</th>
                                 <th>Ngày tạo</th>
-                                <th style="width: 150px;">Thao tác</th>
+                                <th style="width: 200px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($categories as $category): ?>
+                            <?php foreach ($pendingCourses as $course): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($category['id']); ?></td>
-                                    <td><?php echo htmlspecialchars($category['name']); ?></td>
-                                    <td><?php echo htmlspecialchars(substr($category['description'] ?? '', 0, 80)) . (strlen($category['description'] ?? '') > 80 ? '...' : ''); ?>
-                                    </td>
-                                    <td>0</td>
-                                    <td><?php echo date('d/m/Y', strtotime($category['created_at'] ?? 'now')); ?></td>
+                                    <td><?php echo htmlspecialchars($course['id']); ?></td>
+                                    <td><?php echo htmlspecialchars($course['title']); ?></td>
+                                    <td><?php echo htmlspecialchars($course['instructor_name'] ?? 'N/A'); ?></td>
+                                    <td><?php echo date('d/m/Y', strtotime($course['created_at'] ?? 'now')); ?></td>
                                     <td>
-                                        <a href="<?php echo BASE_URL; ?>/admin/editCategory/<?php echo $category['id']; ?>"
-                                            class="action-btn text-warning" title="Sửa">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="<?php echo BASE_URL; ?>/admin/deleteCategory/<?php echo $category['id']; ?>"
-                                            class="action-btn text-danger"
-                                            onclick="return confirm('Bạn có chắc chắn muốn xóa danh mục <?php echo htmlspecialchars($category['name']); ?>?');"
-                                            title="Xóa">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
+                                        <div class="btn-action-group">
+                                            <a href="<?php echo BASE_URL; ?>/admin/approveCourse/<?php echo $course['id']; ?>"
+                                                class="btn-approve"
+                                                onclick="return confirm('Chắc chắn chấp thuận khóa học <?php echo htmlspecialchars($course['title']); ?>?');">
+                                                <i class="fas fa-check"></i> Chấp thuận
+                                            </a>
+                                            <a href="<?php echo BASE_URL; ?>/admin/rejectCourse/<?php echo $course['id']; ?>"
+                                                class="btn-reject"
+                                                onclick="return confirm('Chắc chắn từ chối khóa học <?php echo htmlspecialchars($course['title']); ?>?');">
+                                                <i class="fas fa-times"></i> Từ chối
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -270,8 +286,8 @@ $categories = $categories ?? [];
                     </table>
                 </div>
             <?php else: ?>
-                <div class="alert alert-info" style="padding: 15px; background-color: #f0f8ff; border: 1px solid #b3e5fc;">
-                    Chưa có danh mục nào trong hệ thống.
+                <div class="alert alert-info" style="padding: 15px;">
+                    Không có khóa học nào đang chờ duyệt.
                 </div>
             <?php endif; ?>
         </main>
