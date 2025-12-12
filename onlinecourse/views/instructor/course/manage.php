@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -338,21 +339,24 @@
             font-size: 24px;
         }
 
-        .stat-card:nth-child(1) .stat-icon { 
-            background: linear-gradient(135deg, #fef3c7, #fcd34d); 
-            color: #d97706; 
+        .stat-card:nth-child(1) .stat-icon {
+            background: linear-gradient(135deg, #fef3c7, #fcd34d);
+            color: #d97706;
         }
-        .stat-card:nth-child(2) .stat-icon { 
-            background: linear-gradient(135deg, #dcfce7, #86efac); 
-            color: #059669; 
+
+        .stat-card:nth-child(2) .stat-icon {
+            background: linear-gradient(135deg, #dcfce7, #86efac);
+            color: #059669;
         }
-        .stat-card:nth-child(3) .stat-icon { 
-            background: linear-gradient(135deg, #dbeafe, #93c5fd); 
-            color: #1d4ed8; 
+
+        .stat-card:nth-child(3) .stat-icon {
+            background: linear-gradient(135deg, #dbeafe, #93c5fd);
+            color: #1d4ed8;
         }
-        .stat-card:nth-child(4) .stat-icon { 
-            background: linear-gradient(135deg, #fce7f3, #f9a8d4); 
-            color: #db2777; 
+
+        .stat-card:nth-child(4) .stat-icon {
+            background: linear-gradient(135deg, #fce7f3, #f9a8d4);
+            color: #db2777;
         }
 
         .stat-number {
@@ -706,15 +710,15 @@
             .modern-layout {
                 grid-template-columns: 1fr;
             }
-            
+
             .modern-sidebar {
                 display: none;
             }
-            
+
             .content-area {
                 padding: 16px;
             }
-            
+
             .courses-grid {
                 grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             }
@@ -726,26 +730,26 @@
                 gap: 16px;
                 align-items: stretch;
             }
-            
+
             .top-nav {
                 padding: 16px;
                 flex-direction: column;
                 gap: 12px;
                 align-items: stretch;
             }
-            
+
             .top-nav-right {
                 flex-direction: column;
             }
-            
+
             .statistics-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
+
             .courses-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .filters-grid {
                 grid-template-columns: 1fr;
             }
@@ -755,13 +759,14 @@
             .statistics-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .action-buttons {
                 flex-wrap: wrap;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="modern-layout">
         <!-- Sidebar -->
@@ -781,7 +786,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <nav class="sidebar-menu">
                 <a href="<?php echo BASE_URL; ?>/instructor/dashboard" class="sidebar-item">
                     <i class="fas fa-home"></i>
@@ -790,7 +795,7 @@
                 <a href="<?php echo BASE_URL; ?>/course/manage" class="sidebar-item active">
                     <i class="fas fa-book"></i>
                     <span>Khóa học của tôi</span>
-                    <?php if(isset($totalCourses) && $totalCourses > 0): ?>
+                    <?php if (isset($totalCourses) && $totalCourses > 0): ?>
                         <span class="badge-count"><?php echo $totalCourses; ?></span>
                     <?php endif; ?>
                 </a>
@@ -822,7 +827,7 @@
                     <h1 class="page-title">Quản lý Khóa học</h1>
                     <p class="page-subtitle">Quản lý và theo dõi các khóa học của bạn</p>
                 </div>
-                
+
                 <div class="top-nav-right">
                     <a href="<?php echo BASE_URL; ?>/" class="btn-view-home" target="_blank">
                         <i class="fas fa-external-link-alt"></i>
@@ -852,13 +857,13 @@
                 </div>
 
                 <!-- Statistics -->
-                <?php 
+                <?php
                 // Tính toán số lượng khóa học theo trạng thái
                 $totalCourses = isset($courses) ? count($courses) : 0;
                 $approvedCourses = 0;
                 $pendingCourses = 0;
                 $rejectedCourses = 0;
-                
+
                 if (isset($courses)) {
                     foreach ($courses as $course) {
                         $status = $course['status'] ?? 'pending';
@@ -877,7 +882,7 @@
                     }
                 }
                 ?>
-                
+
                 <div class="statistics-grid">
                     <div class="stat-card">
                         <div class="stat-header">
@@ -890,7 +895,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-header">
                             <div>
@@ -902,7 +907,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-header">
                             <div>
@@ -914,7 +919,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-header">
                             <div>
@@ -933,20 +938,19 @@
                     <form method="GET" action="">
                         <div class="filters-grid">
                             <div class="search-box">
+                                <label>&nbsp;</label>
                                 <i class="fas fa-search"></i>
-                                <input type="text" 
-                                       name="search" 
-                                       placeholder="Tìm kiếm khóa học..." 
-                                       value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>">
+                                <input type="text" name="search" placeholder="Tìm kiếm khóa học..."
+                                    value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>">
                             </div>
-                            
+
                             <div class="filter-group">
                                 <label>Danh mục</label>
                                 <select name="category" class="filter-select">
                                     <option value="">Tất cả danh mục</option>
                                     <?php if (isset($categories) && is_array($categories)): ?>
                                         <?php foreach ($categories as $category): ?>
-                                            <option value="<?php echo $category['id']; ?>" 
+                                            <option value="<?php echo $category['id']; ?>"
                                                 <?php echo (isset($_GET['category']) && $_GET['category'] == $category['id']) ? 'selected' : ''; ?>>
                                                 <?php echo htmlspecialchars($category['name']); ?>
                                             </option>
@@ -954,17 +958,23 @@
                                     <?php endif; ?>
                                 </select>
                             </div>
-                            
+
                             <div class="filter-group">
                                 <label>Trạng thái</label>
                                 <select name="status" class="filter-select">
                                     <option value="">Tất cả trạng thái</option>
-                                    <option value="pending" <?php echo (isset($_GET['status']) && $_GET['status'] == 'pending') ? 'selected' : ''; ?>>Chờ duyệt</option>
-                                    <option value="approved" <?php echo (isset($_GET['status']) && $_GET['status'] == 'approved') ? 'selected' : ''; ?>>Đã duyệt</option>
-                                    <option value="rejected" <?php echo (isset($_GET['status']) && $_GET['status'] == 'rejected') ? 'selected' : ''; ?>>Đã từ chối</option>
+                                    <option value="pending"
+                                        <?php echo (isset($_GET['status']) && $_GET['status'] == 'pending') ? 'selected' : ''; ?>>
+                                        Chờ duyệt</option>
+                                    <option value="approved"
+                                        <?php echo (isset($_GET['status']) && $_GET['status'] == 'approved') ? 'selected' : ''; ?>>
+                                        Đã duyệt</option>
+                                    <option value="rejected"
+                                        <?php echo (isset($_GET['status']) && $_GET['status'] == 'rejected') ? 'selected' : ''; ?>>
+                                        Đã từ chối</option>
                                 </select>
                             </div>
-                            
+
                             <div class="filter-group">
                                 <label>&nbsp;</label>
                                 <button type="submit" class="btn-primary" style="width: 100%;">
@@ -983,17 +993,17 @@
                             <div class="course-card">
                                 <div class="course-image">
                                     <?php if (!empty($course['image'])): ?>
-                                        <img src="<?php echo BASE_URL; ?>/assets/uploads/courses/<?php echo htmlspecialchars($course['image']); ?>" 
-                                             alt="<?php echo htmlspecialchars($course['title']); ?>">
+                                        <img src="<?php echo BASE_URL; ?>/assets/uploads/courses/<?php echo htmlspecialchars($course['image']); ?>"
+                                            alt="<?php echo htmlspecialchars($course['title']); ?>">
                                     <?php else: ?>
                                         <i class="fas fa-book-open"></i>
                                     <?php endif; ?>
-                                    
+
                                     <div class="course-badge">
                                         <span class="status-badge <?php echo $course['status'] ?? 'pending'; ?>">
                                             <?php
                                             $status = $course['status'] ?? 'pending';
-                                            echo match($status) {
+                                            echo match ($status) {
                                                 'approved' => 'Đã duyệt',
                                                 'rejected' => 'Đã từ chối',
                                                 default => 'Chờ duyệt'
@@ -1002,17 +1012,17 @@
                                         </span>
                                     </div>
                                 </div>
-                                
+
                                 <div class="course-content">
                                     <h3 class="course-title"><?php echo htmlspecialchars($course['title']); ?></h3>
                                     <p class="course-description">
-                                        <?php 
+                                        <?php
                                         $description = strip_tags($course['description'] ?? '');
                                         echo htmlspecialchars(mb_substr($description, 0, 150, 'UTF-8'));
                                         if (mb_strlen($description, 'UTF-8') > 150) echo '...';
                                         ?>
                                     </p>
-                                    
+
                                     <div class="course-meta">
                                         <div class="meta-item">
                                             <i class="fas fa-signal"></i>
@@ -1028,7 +1038,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="course-footer">
                                     <div class="course-price <?php echo ($course['price'] ?? 0) > 0 ? '' : 'free'; ?>">
                                         <?php if (($course['price'] ?? 0) > 0): ?>
@@ -1037,29 +1047,28 @@
                                             Miễn phí
                                         <?php endif; ?>
                                     </div>
-                                    
+
                                     <div class="action-buttons">
-                                        <a href="<?php echo BASE_URL; ?>/lesson/manage/<?php echo $course['id']; ?>" 
-                                           class="action-btn" title="Quản lý bài học">
+                                        <a href="<?php echo BASE_URL; ?>/lesson/manage/<?php echo $course['id']; ?>"
+                                            class="action-btn" title="Quản lý bài học">
                                             <i class="fas fa-book-open"></i>
                                         </a>
-                                        <a href="<?php echo BASE_URL; ?>/course/edit/<?php echo $course['id']; ?>" 
-                                           class="action-btn" title="Chỉnh sửa">
+                                        <a href="<?php echo BASE_URL; ?>/course/edit/<?php echo $course['id']; ?>"
+                                            class="action-btn" title="Chỉnh sửa">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="<?php echo BASE_URL; ?>/courses/detail/<?php echo $course['id']; ?>" 
-                                           class="action-btn" target="_blank" title="Xem trước">
+                                        <a href="<?php echo BASE_URL; ?>/courses/detail/<?php echo $course['id']; ?>"
+                                            class="action-btn" target="_blank" title="Xem trước">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="<?php echo BASE_URL; ?>/instructor/enrollments/<?php echo $course['id']; ?>" 
-                                           class="action-btn" title="Học viên">
+                                        <a href="<?php echo BASE_URL; ?>/instructor/enrollments/<?php echo $course['id']; ?>"
+                                            class="action-btn" title="Học viên">
                                             <i class="fas fa-users"></i>
                                         </a>
                                         <!-- NÚT XÓA -->
-                                        <a href="<?php echo BASE_URL; ?>/course/delete/<?php echo $course['id']; ?>" 
-                                           class="action-btn delete-btn" 
-                                           title="Xóa khóa học"
-                                           onclick="return confirmDelete(<?php echo $course['id']; ?>, '<?php echo addslashes(htmlspecialchars($course['title'])); ?>')">
+                                        <a href="<?php echo BASE_URL; ?>/course/delete/<?php echo $course['id']; ?>"
+                                            class="action-btn delete-btn" title="Xóa khóa học"
+                                            onclick="return confirmDelete(<?php echo $course['id']; ?>, '<?php echo addslashes(htmlspecialchars($course['title'])); ?>')">
                                             <i class="fas fa-trash"></i>
                                         </a>
                                     </div>
@@ -1067,13 +1076,13 @@
                             </div>
                         <?php endforeach; ?>
                     </div>
-                    
+
                     <!-- Pagination -->
                     <?php if (isset($totalPages) && $totalPages > 1): ?>
                         <div class="pagination">
                             <?php if ($currentPage > 1): ?>
-                                <a href="?page=<?php echo $currentPage - 1; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>" 
-                                   class="pagination-btn">
+                                <a href="?page=<?php echo $currentPage - 1; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>"
+                                    class="pagination-btn">
                                     <i class="fas fa-chevron-left"></i>
                                     Trước
                                 </a>
@@ -1083,21 +1092,21 @@
                                     Trước
                                 </span>
                             <?php endif; ?>
-                            
+
                             <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                                 <?php if ($i == $currentPage): ?>
                                     <span class="page-number active"><?php echo $i; ?></span>
                                 <?php else: ?>
-                                    <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>" 
-                                       class="page-number">
+                                    <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>"
+                                        class="page-number">
                                         <?php echo $i; ?>
                                     </a>
                                 <?php endif; ?>
                             <?php endfor; ?>
-                            
+
                             <?php if ($currentPage < $totalPages): ?>
-                                <a href="?page=<?php echo $currentPage + 1; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>" 
-                                   class="pagination-btn">
+                                <a href="?page=<?php echo $currentPage + 1; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>"
+                                    class="pagination-btn">
                                     Sau
                                     <i class="fas fa-chevron-right"></i>
                                 </a>
@@ -1159,7 +1168,7 @@
                     }, 150);
                 });
             });
-            
+
             // Add keyboard shortcuts
             document.addEventListener('keydown', function(e) {
                 // Ctrl/Cmd + C: Create new course
@@ -1167,26 +1176,26 @@
                     e.preventDefault();
                     window.location.href = '<?php echo BASE_URL; ?>/course/create';
                 }
-                
+
                 // Ctrl/Cmd + F: Focus search
                 if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
                     e.preventDefault();
                     document.querySelector('input[name="search"]').focus();
                 }
-                
+
                 // Ctrl/Cmd + H: Go to home page
                 if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
                     e.preventDefault();
                     window.open('<?php echo BASE_URL; ?>/', '_blank');
                 }
             });
-            
+
             // Course card hover effect
             document.querySelectorAll('.course-card').forEach(card => {
                 card.addEventListener('mouseenter', function() {
                     this.style.transform = 'translateY(-8px)';
                 });
-                
+
                 card.addEventListener('mouseleave', function() {
                     this.style.transform = 'translateY(0)';
                 });
@@ -1194,4 +1203,5 @@
         });
     </script>
 </body>
+
 </html>

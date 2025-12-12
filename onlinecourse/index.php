@@ -1,7 +1,7 @@
 <?php
 // ====================================================
 // ONLINE COURSE MANAGEMENT SYSTEM
-// Main Entry Point - MVC Router
+// Main Entry Point - MVC Router with API Support
 // ====================================================
 
 // Bật hiển thị lỗi (chỉ dùng trong development)
@@ -17,7 +17,6 @@ if (session_status() === PHP_SESSION_NONE) {
 // 1. CẤU HÌNH HẰNG SỐ & ĐƯỜNG DẪN
 // ====================================================
 if (!defined('ROOT_PATH')) {
-    // Đường dẫn vật lý
     define('ROOT_PATH', __DIR__);
     define('CONTROLLERS_PATH', ROOT_PATH . '/controllers');
     define('VIEWS_PATH', ROOT_PATH . '/views');
@@ -28,7 +27,7 @@ if (!defined('ROOT_PATH')) {
     // URL Base
     $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
     $host = $_SERVER['HTTP_HOST'];
-    $project_path = '/cse485/BTTH02_CNWeb/onlinecourse';
+    $project_path = '/cse485/BTTH02/onlinecourse';
     define('BASE_URL', $protocol . '://' . $host . $project_path);
 }
 
@@ -36,10 +35,8 @@ if (!defined('ROOT_PATH')) {
 // 2. AUTOLOADER - TỰ ĐỘNG LOAD CLASSES
 // ====================================================
 spl_autoload_register(function ($className) {
-    // Chuyển đổi namespace sang đường dẫn
     $className = str_replace('\\', '/', $className);
 
-    // Các vị trí có thể chứa class
     $locations = [
         CONTROLLERS_PATH . '/' . $className . '.php',
         MODELS_PATH . '/' . $className . '.php',
@@ -56,148 +53,158 @@ spl_autoload_register(function ($className) {
 });
 
 // ====================================================
-// 3. ROUTER ĐƠN GIẢN - XỬ LÝ ROUTE TỪNG TRƯỜNG HỢP
+// 3. ROUTER - XỬ LÝ ROUTES
 // ====================================================
 
 // Lấy URI từ request
 $requestUri = $_SERVER['REQUEST_URI'];
 
 // Loại bỏ base path
-$basePath = '/cse485/BTTH02_CNWeb/onlinecourse';
+$basePath = '/cse485/BTTH02/onlinecourse';
 if (strpos($requestUri, $basePath) === 0) {
     $requestUri = substr($requestUri, strlen($basePath));
 }
 
-// Loại bỏ query string (?param=value)
+// Loại bỏ query string
 $requestUri = parse_url($requestUri, PHP_URL_PATH);
 
-// Chuẩn hóa URI (loại bỏ / ở đầu và cuối)
+// Chuẩn hóa URI
 $uri = trim($requestUri, '/');
 
-// Xác định controller và action dựa trên URI
+// Khởi tạo biến routing
 $controllerName = 'HomeController';
 $actionName = 'index';
 $params = [];
 
 // ====================================================
-// ĐỊNH NGHĨA ROUTES (ĐÃ CẬP NHẬT)
+// API ROUTES (Ưu tiên cao nhất)
 // ====================================================
 
-// Route cho Home
+// API: Đăng ký khóa học
+if ($uri === 'api/enroll' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once CONTROLLERS_PATH . '/EnrollmentController.php';
+    $controller = new EnrollmentController();
+    $controller->apiEnroll();
+    exit();
+}
+
+// API: Lấy danh sách khóa học đã đăng ký
+if ($uri === 'api/enrolled-courses' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once CONTROLLERS_PATH . '/EnrollmentController.php';
+    $controller = new EnrollmentController();
+    $controller->apiGetEnrolledCourseIds();
+    exit();
+}
+
+// API: Kiểm tra trạng thái đăng ký
+if (preg_match('/^api\/check-enrollment\/(\d+)$/', $uri, $matches) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once CONTROLLERS_PATH . '/EnrollmentController.php';
+    $controller = new EnrollmentController();
+    $controller->apiCheckEnrollment($matches[1]);
+    exit();
+}
+
+// ====================================================
+// ĐỊNH NGHĨA ROUTES - WEB
+// ====================================================
+
+// Route Home
 if ($uri === '' || $uri === 'home' || $uri === 'index') {
     $controllerName = 'HomeController';
     $actionName = 'index';
 }
-// Route cho Auth
+// Route Auth
 elseif (strpos($uri, 'auth/') === 0) {
     $controllerName = 'AuthController';
-    $parts = explode('/', substr($uri, 5)); // Bỏ "auth/"
+    $parts = explode('/', substr($uri, 5));
     $actionName = $parts[0] ?? 'login';
     $params = array_slice($parts, 1);
 }
-// Route cho Instructor Dashboard
+// Route Instructor Dashboard
 elseif ($uri === 'instructor/dashboard') {
     $controllerName = 'CourseController';
     $actionName = 'dashboard';
 }
-// Route cho Course (Quản lý - Giảng viên)
+// Route Course Management (Giảng viên)
 elseif (strpos($uri, 'course/') === 0) {
     $controllerName = 'CourseController';
-    $parts = explode('/', substr($uri, 7)); // Bỏ "course/"
+    $parts = explode('/', substr($uri, 7));
     $actionName = $parts[0] ?? 'index';
     $params = array_slice($parts, 1);
 }
-// Route cho Lesson (Quản lý - Giảng viên)
+// Route Lesson Management (Giảng viên)
 elseif (strpos($uri, 'lesson/') === 0) {
     $controllerName = 'LessonController';
-    $parts = explode('/', substr($uri, 7)); // Bỏ "lesson/"
+    $parts = explode('/', substr($uri, 7));
     $actionName = $parts[0] ?? 'index';
     $params = array_slice($parts, 1);
-
-    // BỔ SUNG ROUTE CHO TÀI LIỆU
-    if ($actionName === 'materials' && count($params) === 1) { // lesson/materials/{id}
-        $actionName = 'materials';
-    } elseif ($actionName === 'uploadmaterialform' && count($params) === 1) { // lesson/uploadMaterialForm/{id}
-        $actionName = 'uploadMaterialForm';
-    } elseif ($actionName === 'uploadmaterial' && $_SERVER['REQUEST_METHOD'] === 'POST') { // lesson/uploadMaterial (POST)
-        $actionName = 'uploadMaterial';
-        $params = []; // Lấy dữ liệu từ POST
-    }
 }
-// >>> BẮT ROUTE CHI TIẾT TIẾN ĐỘ CỦA GIẢNG VIÊN (enrollment/progress/cid/sid)
+// Route Student Dashboard
+elseif ($uri === 'student/dashboard') {
+    $controllerName = 'EnrollmentController';
+    $actionName = 'dashboard';
+}
+// Route My Courses
+elseif ($uri === 'student/my-courses') {
+    $controllerName = 'EnrollmentController';
+    $actionName = 'myCourses';
+}
+// Route Learning Interface (student/course/{id})
+elseif (preg_match('/^student\/course\/(\d+)$/', $uri, $matches)) {
+    $controllerName = 'EnrollmentController';
+    $actionName = 'learning';
+    $params = [$matches[1]];
+}
+// Route Student Progress
+elseif ($uri === 'student/progress') {
+    $controllerName = 'EnrollmentController';
+    $actionName = 'progressList';
+}
+// Route Progress Detail (enrollment/progress/{course_id}/{student_id})
 elseif (preg_match('/^enrollment\/progress\/(\d+)\/(\d+)$/', $uri, $matches)) {
     $controllerName = 'EnrollmentController';
     $actionName = 'progressDetail';
     $params = array_slice($matches, 1);
 }
-// Route cho Enrollment (Học viên)
+// Route Enrollment
 elseif (strpos($uri, 'enrollment/') === 0) {
     $controllerName = 'EnrollmentController';
-    $parts = explode('/', substr($uri, 11)); // Bỏ "enrollment/"
+    $parts = explode('/', substr($uri, 11));
     $actionName = $parts[0] ?? 'dashboard';
     $params = array_slice($parts, 1);
 
-    if (count($parts) > 1 && $parts[0] !== 'register' && $parts[0] !== 'my_courses' && $parts[0] !== 'dashboard') {
+    if (count($parts) > 1 && !in_array($parts[0], ['register', 'my_courses', 'dashboard'])) {
         $actionName = $parts[0];
         $params = array_slice($parts, 1);
     }
 }
-// Route cho Courses (public)
-elseif ($uri === 'courses') {
-    $controllerName = 'CourseController';
-    $actionName = 'index';
-}
-// Route chi tiết khóa học (public)
-elseif (preg_match('/^courses\/detail\/(\d+)$/', $uri, $matches)) {
+// Route Course Detail Public (courses/detail/{id})
+elseif (preg_match('/^\/?courses\/detail\/(\d+)$/', $uri, $matches)) {
     $controllerName = 'CourseController';
     $actionName = 'detail';
     $params = [$matches[1]];
 }
-// Route tìm kiếm (public)
-elseif (strpos($uri, 'courses/search') === 0) {
+// Route Courses Public (index, search, etc.)
+elseif (strpos($uri, 'courses') === 0 || strpos($uri, '/courses') === 0) {
     $controllerName = 'CourseController';
-    $actionName = 'search';
+    $uri_parts = explode('/', trim($uri, '/'));
+    $actionName = $uri_parts[1] ?? 'index';
+    $params = array_slice($uri_parts, 2);
 }
-// Route mặc định khác và xử lý alias/routes cũ
+// Route Instructor Enrollments/Progress (Legacy)
 else {
     $parts = explode('/', $uri);
 
-    // Trường hợp 1: Instructor enrollments/progress (đường dẫn alias cũ)
     if (strtolower($parts[0]) === 'instructor') {
         if (!empty($parts[1]) && strtolower($parts[1]) === 'enrollments') {
-
             $controllerName = 'EnrollmentController';
-            $actionName = 'listStudents';
+            $actionName = empty(array_slice($parts, 2)) ? 'instructorEnrollmentsSummary' : 'listStudents';
             $params = array_slice($parts, 2);
-
-            if (empty($params)) {
-                $actionName = 'instructorEnrollmentsSummary';
-            }
-
-            $controllerName = 'EnrollmentController';
         } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'progress') {
-
             $controllerName = 'EnrollmentController';
-            $actionName = 'progressOverview';
+            $actionName = empty(array_slice($parts, 2)) ? 'progressOverview' : 'progress';
             $params = array_slice($parts, 2);
-
-            if (!empty($params)) {
-                $actionName = 'progress';
-            }
-
-        }
-    }
-
-    // Trường hợp 2: Các alias cũ còn lại...
-    if (!isset($controllerName) || (isset($parts[0]) && strtolower($parts[0]) !== 'instructor')) {
-        $controllerName = !empty($parts[0]) ? ucfirst($parts[0]) . 'Controller' : 'HomeController';
-        $actionName = !empty($parts[1]) ? $parts[1] : 'index';
-        $params = array_slice($parts, 2);
-    }
-
-    // Xử lý các trường hợp URL cố gắng gọi instructor cũ
-    if (strtolower($parts[0]) === 'instructor') {
-        if (!empty($parts[1]) && strtolower($parts[1]) === 'courses') {
+        } elseif (!empty($parts[1]) && strtolower($parts[1]) === 'courses') {
             $controllerName = 'CourseController';
             $actionName = 'manage';
             $params = array_slice($parts, 2);
@@ -218,10 +225,15 @@ else {
             $actionName = 'manage';
             $params = array_slice($parts, 2);
         }
+    } else {
+        // Default routing
+        $controllerName = !empty($parts[0]) ? ucfirst($parts[0]) . 'Controller' : 'HomeController';
+        $actionName = !empty($parts[1]) ? $parts[1] : 'index';
+        $params = array_slice($parts, 2);
     }
 }
 
-// Chuyển đổi tên action từ kebab-case sang camelCase
+// Chuyển đổi kebab-case sang camelCase
 if (strpos($actionName, '-') !== false) {
     $actionName = lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $actionName))));
 }
@@ -232,27 +244,19 @@ if (strpos($actionName, '-') !== false) {
 
 $controllerFile = CONTROLLERS_PATH . '/' . $controllerName . '.php';
 
-// Kiểm tra file controller tồn tại
 if (file_exists($controllerFile)) {
     try {
-        // Tải file controller
         require_once $controllerFile;
 
-        // Kiểm tra class tồn tại
         if (class_exists($controllerName)) {
-            // Tạo instance controller
             $controller = new $controllerName();
 
-            // Kiểm tra method tồn tại
             if (method_exists($controller, $actionName)) {
-                // Gọi action với các tham số
                 call_user_func_array([$controller, $actionName], $params);
             } else {
-                // Nếu không tìm thấy action, thử gọi index()
                 if (method_exists($controller, 'index')) {
                     $controller->index();
                 } else {
-                    // Không tìm thấy action nào
                     http_response_code(404);
                     showError("Action '{$actionName}' không tồn tại trong Controller '{$controllerName}'");
                 }
@@ -266,101 +270,147 @@ if (file_exists($controllerFile)) {
         showError("Lỗi: " . $e->getMessage() . "<br>File: " . $e->getFile() . ":" . $e->getLine());
     }
 } else {
-    // Controller không tồn tại
     http_response_code(404);
     showError("Controller '{$controllerName}' không tồn tại.<br>File: {$controllerFile}");
 }
 
 // ====================================================
-// HÀM HIỂN THỊ LỖI
+// 5. HÀM HIỂN THỊ LỖI
 // ====================================================
 function showError($message)
 {
-    // Nội dung hàm showError giữ nguyên
-    echo '
-    <!DOCTYPE html>
-    <html lang="vi">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Lỗi - Online Course</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-            .error-container { margin-top: 100px; }
-            .error-card { border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-            .back-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
-            .back-btn:hover { opacity: 0.9; transform: translateY(-2px); }
-        </style>
-    </head>
-    <body>
-        <div class="container error-container">
-            <div class="row justify-content-center">
-                <div class="col-md-8 col-lg-6">
-                    <div class="card error-card">
-                        <div class="card-body p-5">
-                            <div class="text-center mb-4">
-                                <div style="font-size: 80px; color: #ef4444;">⚠️</div>
-                                <h2 class="mt-3 mb-2" style="color: #374151;">Có lỗi xảy ra!</h2>
-                                <p class="text-muted">Hệ thống gặp sự cố khi xử lý yêu cầu của bạn</p>
-                            </div>
-                            
-                            <div class="alert alert-light border" style="background: #f9fafb;">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-exclamation-triangle text-danger fa-2x"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h5 class="alert-heading" style="color: #991b1b;">Thông báo lỗi</h5>
-                                        <p style="color: #374151; font-family: monospace;">' . htmlspecialchars($message) . '</p>
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+    $host = $_SERVER['HTTP_HOST'];
+    $project_path = '/cse485/BTTH02/onlinecourse';
+    $BASE_URL = $protocol . '://' . $host . $project_path;
+
+    echo '<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lỗi - Online Course</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: "Inter", sans-serif;
+        }
+        .error-container {
+            margin-top: 100px;
+        }
+        .error-card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: none;
+        }
+        .error-icon {
+            font-size: 80px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .back-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            transition: all 0.3s;
+        }
+        .back-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .btn-outline-custom {
+            transition: all 0.3s;
+        }
+        .btn-outline-custom:hover {
+            transform: translateY(-2px);
+        }
+        .error-code {
+            font-family: "Courier New", monospace;
+            background: #f9fafb;
+            border-left: 4px solid #ef4444;
+            padding: 1rem;
+            border-radius: 4px;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container error-container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card error-card">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <div class="error-icon">⚠️</div>
+                            <h2 class="mt-3 mb-2 fw-bold" style="color: #374151;">Có lỗi xảy ra!</h2>
+                            <p class="text-muted">Hệ thống gặp sự cố khi xử lý yêu cầu của bạn</p>
+                        </div>
+                        
+                        <div class="alert alert-danger border-0" role="alert">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h5 class="alert-heading fw-bold mb-2">Thông báo lỗi</h5>
+                                    <div class="error-code">
+                                        ' . htmlspecialchars($message) . '
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <div class="mt-4 pt-3 border-top">
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <a href="' . BASE_URL . '" class="btn back-btn text-white w-100 py-3">
-                                            <i class="fas fa-home me-2"></i>Về trang chủ
-                                        </a>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <a href="' . BASE_URL . '/auth/login" class="btn btn-outline-primary w-100 py-3">
-                                            <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập
-                                        </a>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <a href="' . BASE_URL . '/courses" class="btn btn-success w-100 py-3">
-                                            <i class="fas fa-book me-2"></i>Khóa học
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-4 text-center">
-                                <small class="text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Nếu đây là lỗi hệ thống, vui lòng liên hệ quản trị viên hoặc thử lại sau.
-                                </small>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="text-center mt-4">
-                        <div class="text-white">
-                            <small>
-                                Online Course System &copy; ' . date('Y') . ' | 
-                                <a href="' . BASE_URL . '/admin" class="text-white text-decoration-underline">Admin</a> | 
-                                <a href="' . BASE_URL . '/instructor/dashboard" class="text-white text-decoration-underline">Instructor</a>
+                        
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <a href="' . $BASE_URL . '" class="btn back-btn text-white w-100 py-3">
+                                        <i class="fas fa-home me-2"></i>Trang chủ
+                                    </a>
+                                </div>
+                                <div class="col-md-4">
+                                    <a href="' . $BASE_URL . '/courses" class="btn btn-success w-100 py-3 btn-outline-custom">
+                                        <i class="fas fa-book me-2"></i>Khóa học
+                                    </a>
+                                </div>
+                                <div class="col-md-4">
+                                    <a href="' . $BASE_URL . '/auth/login" class="btn btn-outline-primary w-100 py-3 btn-outline-custom">
+                                        <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Nếu lỗi tiếp diễn, vui lòng liên hệ <strong>quản trị viên hệ thống</strong>
                             </small>
                         </div>
                     </div>
                 </div>
+                
+                <div class="text-center mt-4">
+                    <div class="text-white">
+                        <small>
+                            Online Course System &copy; ' . date('Y') . ' | 
+                            <a href="' . $BASE_URL . '/admin" class="text-white text-decoration-underline">Admin</a> | 
+                            <a href="' . $BASE_URL . '/instructor/dashboard" class="text-white text-decoration-underline">Instructor</a> |
+                            <a href="' . $BASE_URL . '/student/dashboard" class="text-white text-decoration-underline">Student</a>
+                        </small>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    </body>
-    </html>';
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>';
     exit();
 }
