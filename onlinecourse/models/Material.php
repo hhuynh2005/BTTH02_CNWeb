@@ -88,5 +88,39 @@ class Material
         }
         return false;
     }
+    /**
+     * Lấy TẤT CẢ tài liệu từ các khóa học mà một học viên đã đăng ký.
+     * Phương thức này JOIN qua enrollments, courses, lessons và materials.
+     */
+    public function getAllMaterialsByStudent(int $studentId)
+    {
+        $query = "
+        SELECT 
+            m.id AS material_id, 
+            m.filename, 
+            m.file_path, 
+            m.file_type,
+            m.uploaded_at,
+            c.title AS course_title,
+            l.title AS lesson_title
+        FROM 
+            " . $this->table_name . " m
+        JOIN 
+            lessons l ON m.lesson_id = l.id
+        JOIN 
+            courses c ON l.course_id = c.id
+        JOIN 
+            enrollments e ON c.id = e.course_id
+        WHERE 
+            e.student_id = :studentId
+        ORDER BY 
+            m.uploaded_at DESC";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':studentId', $studentId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 ?>

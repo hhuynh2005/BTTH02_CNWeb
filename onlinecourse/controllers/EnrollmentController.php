@@ -1,152 +1,465 @@
-<!-- // EnrollmentController.php
-// Xử lý việc học viên tham gia khóa học   // Mua và học khóa học -->
-<!-- 
-// Models liên quan:
-// Enrollment.php: Quản lý dữ liệu đăng ký khóa học
-// Course.php: Quản lý dữ liệu khóa học
-// User.php: Quản lý dữ liệu người dùng (học viên) 
-
-// Views liên quan:
-// - views/students/dashboard.php: Tổng quan tiến độ học tập của học viên
-// - views/courses/my_courses.php: Hiển thị danh sách khóa học mà học viên đã đăng ký
-
-// Logic nghiệp vụ:
-// enroll($courseId, $userId): Đăng ký học viên vào khóa học
-// myCourses($userId): Lấy danh sách khóa học mà học viên đã đăng ký
-// progress($courseId, $userId): Lấy tiến độ học tập của học viên
-// Kiểm tra quyền truy cập khóa học trước khi cho phép học viên xem nội dung khóa học
-
-// done -->
-
 <?php
-require_once 'models/Enrollment.php';
-require_once 'models/Course.php';
+// File: controllers/EnrollmentController.php - HOÀN THIỆN CHỨC NĂNG VÀ KHẮC PHỤC LỖI KHỞI TẠO
 
+// Load Models & Config cần thiết
+// Cần đảm bảo các file này tồn tại và có class tương ứng
+require_once MODELS_PATH . '/Enrollment.php';
+require_once MODELS_PATH . '/Course.php';
+require_once MODELS_PATH . '/Lesson.php';
+require_once MODELS_PATH . '/User.php';
+require_once CONFIG_PATH . '/Database.php'; // Bắt buộc phải có để khởi tạo $db
+require_once MODELS_PATH . '/Material.php';
 class EnrollmentController
 {
     private $enrollmentModel;
     private $courseModel;
+    private $userModel;
+    private $lessonModel;
+    private $materialModel;
+
+    private $db; // Thuộc tính để lưu trữ kết nối DB
 
     public function __construct()
     {
-        // Yêu cầu phải có Models
-        $this->enrollmentModel = new Enrollment();
-        $this->courseModel = new Course();
+        // 1. KHỞI TẠO KẾT NỐI DATABASE
+        $database = new Database();
+        $this->db = $database->getConnection(); // LƯU KẾT NỐI VÀO THUỘC TÍNH
+        $db = $this->db;
+
+        // 2. KHỞI TẠO CÁC MODEL VÀ TRUYỀN KẾT NỐI ($db) - KHẮC PHỤC ArgumentCountError
+        $this->enrollmentModel = new Enrollment($db);
+
+        if (!class_exists('Course')) {
+            require_once MODELS_PATH . '/Course.php';
+        }
+        $this->courseModel = new Course($db);
+
+        if (!class_exists('User')) {
+            require_once MODELS_PATH . '/User.php';
+        }
+        $this->userModel = new User($db);
+
+        if (!class_exists('Lesson')) {
+            require_once MODELS_PATH . '/Lesson.php';
+        }
+        // Khởi tạo Material Model:
+        if (!class_exists('Material')) {
+            // Đây chỉ là fallback, Autoloader nên tìm thấy nó
+            require_once MODELS_PATH . '/Material.php';
+        }
+        $this->materialModel = new Material($this->db); // <--- LƯU Ý: Truyền $this->db
+        $this->lessonModel = new Lesson($db);
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
     }
 
-    // --- Helper: GIẢ LẬP ĐĂNG NHẬP (MOCK LOGIN) ---
-    // Thay vì redirect, hàm này sẽ tự login cho 1 user ngẫu nhiên
-    private function checkLogin() {
-        // Nếu chưa có session user
-        if (!isset($_SESSION['user'])) {
-            
-            // 1. Tạo kết nối CSDL tạm thời để lấy user
-            // (Đảm bảo class Database đã được load từ index.php hoặc model)
-            $db = new Database();
-            $conn = $db->getConnection();
+    /**
+     * Helper method: Load view với data (Đã sửa lỗi thiếu .php)
+     */
+    private function loadView($viewPath, $data = [])
+    {
+        extract($data);
+        $fullPath = VIEWS_PATH . '/' . $viewPath;
 
-            // 2. Query lấy 1 user ngẫu nhiên (Ưu tiên lấy Học viên - role 0)
-            // ORDER BY RAND() để lấy ngẫu nhiên mỗi lần F5 (hoặc bỏ đi để lấy cố định)
-            $query = "SELECT * FROM users WHERE role = 0 ORDER BY RAND() LIMIT 1";
-            $stmt = $conn->prepare($query);
-            $stmt->execute();
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            // Nếu không có học viên, lấy đại user bất kỳ
-            if (!$user) {
-                $query = "SELECT * FROM users ORDER BY RAND() LIMIT 1";
-                $stmt = $conn->prepare($query);
-                $stmt->execute();
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            }
-
-            // 3. Gán thông tin vào Session
-            if ($user) {
-                $_SESSION['user'] = [
-                    'id' => $user['id'],
-                    'username' => $user['username'],
-                    'fullname' => $user['fullname'],
-                    'email' => $user['email'],
-                    'role' => $user['role'], // Quan trọng để hiển thị Sidebar
-                    'avatar' => isset($user['avatar']) ? $user['avatar'] : null
-                ];
-                
-                // (Tùy chọn) Thông báo nhỏ để biết đang dùng user nào
-                // echo "<div style='background:yellow; padding:5px; text-align:center'>Đang test với User: " . $user['fullname'] . " (ID: " . $user['id'] . ")</div>";
-            } else {
-                die("Lỗi: Bảng 'users' đang trống! Hãy vào Database thêm ít nhất 1 dòng dữ liệu.");
-            }
+        // SỬA: Đảm bảo có .php
+        if (pathinfo($fullPath, PATHINFO_EXTENSION) !== 'php') {
+            $fullPath .= '.php';
         }
+
+        if (!file_exists($fullPath)) {
+            die("View không tồn tại: {$fullPath}");
+        }
+
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        ob_start();
+        include $fullPath;
+        ob_end_flush();
     }
 
-    // // Helper: Kiểm tra đăng nhập
-    // private function checkLogin() {
-    //     if (!isset($_SESSION['user'])) {
-    //         header("Location: index.php?url=auth/login");
-    //         exit();
-    //     }
-    // }
+    /**
+     * Helper method: Kiểm tra quyền Học viên (role 0 hoặc cao hơn)
+     */
+    private function checkStudentAccess()
+    {
+        if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? -1) != 0) {
+            // Chuyển hướng nếu chưa đăng nhập hoặc không phải học viên
+            header('Location: ' . BASE_URL . '/auth/login?msg=' . urlencode('Bạn cần đăng nhập tài khoản Học viên để xem các khóa học đã đăng ký!'));
+            exit();
+        }
+        return $_SESSION['user_id'];
+    }
 
-    // 1. Xử lý đăng ký khóa học (POST)
-    // URL: index.php?url=enrollment/register
-    public function register() {
-        $this->checkLogin();
+    /**
+     * Helper method: Kiểm tra quyền Giảng viên (role 1)
+     */
+    private function checkInstructorAccess()
+    {
+        if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? 0) != 1) {
+            header('Location: ' . BASE_URL . '/auth/login?msg=' . urlencode('Bạn cần đăng nhập với quyền Giảng viên để thực hiện thao tác này!'));
+            exit();
+        }
+        return $_SESSION['user_id'];
+    }
+
+    // =====================================================================
+    // PHẦN 1: CHỨC NĂNG HỌC VIÊN (Student) - Code phần này Trường
+    // =====================================================================
+
+    /**
+     * 1. Đăng ký khóa học (Xử lý POST từ form chi tiết khóa học)
+     */
+    public function register()
+    {
+        $studentId = $this->checkStudentAccess();
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['course_id'])) {
             $courseId = $_POST['course_id'];
-            $studentId = $_SESSION['user']['id'];
 
-            // Kiểm tra xem đã đăng ký chưa
             if ($this->enrollmentModel->isEnrolled($courseId, $studentId)) {
-                echo "<script>alert('Bạn đã đăng ký khóa học này rồi!'); window.location.href='index.php?url=enrollment/my_courses';</script>";
+                header('Location: ' . BASE_URL . '/student/my-courses?msg=' . urlencode('Bạn đã đăng ký khóa học này rồi!'));
                 return;
             }
 
-            // Gọi Model tạo đăng ký mới
             if ($this->enrollmentModel->create($courseId, $studentId)) {
-                echo "<script>alert('Đăng ký thành công!'); window.location.href='index.php?url=enrollment/my_courses';</script>";
+                header('Location: ' . BASE_URL . '/student/my-courses?msg=' . urlencode('✅ Đăng ký thành công!'));
             } else {
-                echo "<script>alert('Đăng ký thất bại!'); history.back();</script>";
+                header('Location: ' . BASE_URL . '/courses/detail/' . $courseId . '?msg=' . urlencode('❌ Đăng ký thất bại!'));
             }
+        }
+        exit();
+    }
+
+    /**
+     * 2. Danh sách khóa học của tôi (My Courses) - CẬP NHẬT VIEW
+     */
+    public function myCourses()
+    {
+        $userId = $this->checkStudentAccess();
+        // Lấy danh sách khóa học kèm thông tin chi tiết (giảng viên, tiến độ...)
+        $enrolledCourses = $this->enrollmentModel->getEnrolledCourses($userId);
+
+        $data = ['enrolledCourses' => $enrolledCourses];
+        // Sử dụng view mới: student/my_courses.php
+        $this->loadView('student/my_courses.php', $data);
+    }
+
+    /**
+     * 3. Dashboard Học viên - CẬP NHẬT LOGIC THỐNG KÊ
+     */
+    public function dashboard()
+    {
+        $studentId = $this->checkStudentAccess();
+
+        // Lấy dữ liệu cần thiết cho dashboard
+        $enrolledCourses = $this->enrollmentModel->getEnrolledCourses($studentId);
+
+        // Tính toán thống kê (Stats)
+        $stats = [
+            'total_courses' => count($enrolledCourses),
+            'in_progress' => 0,
+            'completed' => 0,
+            'avg_progress' => 0
+        ];
+
+        $totalProgress = 0;
+        foreach ($enrolledCourses as $course) {
+            $prog = isset($course['progress']) ? $course['progress'] : 0;
+            if ($prog == 100) {
+                $stats['completed']++;
+            } else {
+                $stats['in_progress']++;
+            }
+            $totalProgress += $prog;
+        }
+
+        if ($stats['total_courses'] > 0) {
+            $stats['avg_progress'] = round($totalProgress / $stats['total_courses']);
+        }
+
+        // Lấy bài học sắp tới (Logic giả lập: Lấy bài đầu tiên của khóa học mới nhất)
+        $upcomingLessons = [];
+        if (!empty($enrolledCourses)) {
+            $firstCourse = $enrolledCourses[0];
+            $lessons = $this->lessonModel->getLessonsByCourse($firstCourse['course_id'] ?? $firstCourse['id']);
+
+            if (!empty($lessons)) {
+                $upcomingLessons[] = [
+                    'title' => $lessons[0]['title'],
+                    'course_title' => $firstCourse['title'],
+                    'start_time' => date('Y-m-d H:i:s') // Mock data
+                ];
+            }
+        }
+
+        $data = [
+            'student' => $_SESSION,
+            'stats' => $stats,
+            'enrolledCourses' => $enrolledCourses,
+            'upcomingLessons' => $upcomingLessons
+        ];
+
+        $this->loadView('student/dashboard.php', $data);
+    }
+
+    /**
+     * 4. Theo dõi tiến độ chung (Progress Tracking List)
+     * GIẢ ĐỊNH: Router ánh xạ URL /student/course_progress tới phương thức này.
+     */
+    public function progressList()
+    {
+        $studentId = $this->checkStudentAccess();
+
+        // 1. Lấy danh sách khóa học kèm thông tin chi tiết tiến độ
+        $myCourses = $this->enrollmentModel->getEnrolledCourses($studentId);
+
+        $data = ['myCourses' => $myCourses];
+
+        // 2. GỌI VIEW ĐÚNG: student/course_progress.php
+        $this->loadView('student/course_progress.php', $data);
+    }
+
+    /**
+     * 5. Màn hình học tập (Learning Interface)
+     */
+    /**
+     * 5. Màn hình học tập (Learning Interface)
+     */
+    public function learning($courseId)
+    {
+        $studentId = $this->checkStudentAccess();
+
+        // QUAN TRỌNG: Đảm bảo $courseId là ID khóa học, không phải lesson ID
+        $courseId = (int) $courseId;
+
+        // Lấy thông tin khóa học
+        $course = $this->courseModel->getById($courseId);
+
+        if (!$course) {
+            header('Location: ' . BASE_URL . '/student/my-courses?msg=' . urlencode('Khóa học không tồn tại!'));
+            exit();
+        }
+
+        // Lấy thông tin enrollment để hiển thị progress bar
+        $enrollment = $this->enrollmentModel->getEnrollment($studentId, $courseId);
+
+        // Kiểm tra xem học viên đã đăng ký khóa học này chưa
+        if (!$enrollment) {
+            header('Location: ' . BASE_URL . '/student/my-courses?msg=' . urlencode('Bạn chưa đăng ký khóa học này!'));
+            exit();
+        }
+
+        // 1. Lấy danh sách bài học
+        $lessonsResult = $this->lessonModel->getAllByCourseId($courseId);
+        $lessons = [];
+        if ($lessonsResult && $lessonsResult instanceof PDOStatement) {
+            $lessons = $lessonsResult->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $lessons = $lessonsResult;
+        }
+
+        // 2. Xác định Lesson ID từ query string
+        $currentLessonId = isset($_GET['lesson_id']) ? (int) $_GET['lesson_id'] : null;
+        $currentLesson = null;
+
+        // Nếu không có lesson_id, lấy bài học đầu tiên
+        if (!$currentLessonId && !empty($lessons)) {
+            $currentLessonId = $lessons[0]['id'];
+        }
+
+        // 3. Lấy chi tiết bài học VÀ KIỂM TRA bài học có thuộc khóa học này không
+        if ($currentLessonId) {
+            $currentLesson = $this->lessonModel->getById($currentLessonId);
+
+            // KIỂM TRA BẢO MẬT: Đảm bảo lesson thuộc đúng course
+            if ($currentLesson && $currentLesson['course_id'] != $courseId) {
+                // Nếu lesson không thuộc course này, redirect về course đúng
+                header('Location: ' . BASE_URL . '/student/course/' . $currentLesson['course_id'] . '?lesson_id=' . $currentLessonId);
+                exit();
+            }
+        }
+
+        // 4. Chuẩn bị dữ liệu
+        $data = [
+            'courseDetail' => array_merge($course, ['progress' => $enrollment['progress'] ?? 0]),
+            'lessons' => $lessons,
+            'currentLesson' => $currentLesson,
+            'progressDetail' => $enrollment['progress'] ?? 0,
+        ];
+
+        // Load view học tập
+        $this->loadView('courses/detail.php', $data);
+    }
+
+    /**
+     * 6. Xử lý hoàn thành bài học (AJAX hoặc Form POST) - MỚI BỔ SUNG
+     */
+    public function completeLesson()
+    {
+        $studentId = $this->checkStudentAccess();
+
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $courseId = $_POST['course_id'];
+
+            // Lấy tổng số bài học
+            $lessons = $this->lessonModel->getAllByCourseId($courseId);
+            if (is_object($lessons)) {
+                $lessons = $lessons->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $totalLessons = count($lessons);
+
+            // Lấy progress hiện tại
+            $enrollment = $this->enrollmentModel->getEnrollment($studentId, $courseId);
+            $currentProgress = $enrollment['progress'];
+
+            // Tính toán progress mới (giả sử mỗi lần click tăng 1 bài)
+            $newProgress = min(100, $currentProgress + (100 / ($totalLessons > 0 ? $totalLessons : 1)));
+
+            // Cập nhật vào DB
+            $this->enrollmentModel->updateProgress($studentId, $courseId, $newProgress);
+
+            // Redirect lại trang học
+            header('Location: ' . BASE_URL . '/student/course/' . $courseId . '?msg=completed');
         }
     }
 
-    // 2. Hiển thị danh sách khóa học của tôi 
-    // URL: index.php?url=enrollment/my_courses
-    public function my_courses() {
-        $this->checkLogin();
-        $userId = $_SESSION['user']['id'];
+    // =====================================================================
+    // PHẦN 2: CHỨC NĂNG GIẢNG VIÊN (Instructor)
+    // =====================================================================
 
-        // Gọi đúng tên hàm trong Model: getCoursesByStudent
-        $myCourses = $this->enrollmentModel->getCoursesByStudent($userId);
+    /**
+     * 5. Xem danh sách học viên đăng ký cho khóa học
+     */
+    public function listStudents($courseId)
+    {
+        $instructorId = $this->checkInstructorAccess();
 
-        // Gọi View hiển thị
-        // Lưu ý: View vẫn nằm trong thư mục student như cũ
-        require_once 'views/student/my_courses.php';
+        $course = $this->courseModel->getById($courseId);
+        if (!$course || ($course['instructor_id'] ?? 0) != $instructorId) {
+            header('Location: ' . BASE_URL . '/course/manage?msg=' . urlencode('Không có quyền xem danh sách học viên của khóa học này!'));
+            exit();
+        }
+
+        $students = $this->enrollmentModel->getStudentsByCourseId($courseId);
+
+        $data = [
+            'course' => $course,
+            'students' => $students
+        ];
+
+        $this->loadView('instructor/students/list.php', $data);
     }
 
-    // 3. Dashboard học viên
-    // URL: index.php?url=enrollment/dashboard
-    public function dashboard() {
-        $this->checkLogin();
-        // Có thể bổ sung logic thống kê sau
-        require_once 'views/student/dashboard.php';
+    /**
+     * 6. Tổng quan học viên cho Giảng viên
+     */
+    public function instructorEnrollmentsSummary()
+    {
+        $instructor_id = $this->checkInstructorAccess();
+
+        $allEnrollments = $this->enrollmentModel->getAllStudentsByInstructor($instructor_id);
+
+        $data = [
+            'allEnrollments' => $allEnrollments,
+            'totalStudents' => count(array_unique(array_column($allEnrollments, 'student_id')))
+        ];
+
+        $this->loadView('instructor/students/summary.php', $data);
     }
 
-    // 4. Theo dõi tiến độ
-    public function course_progress() {
-        $this->checkLogin(); // 1. Kiểm tra đăng nhập
-        $userId = $_SESSION['user']['id'];
+    /**
+     * 7. Tổng quan Tiến độ Khóa học
+     */
+    public function progressOverview()
+    {
+        $instructorId = $this->checkInstructorAccess();
 
-        // 2. [QUAN TRỌNG] Gọi Model để lấy dữ liệu khóa học
-        // Nếu thiếu dòng này, View sẽ không có biến $myCourses để hiển thị
-        $myCourses = $this->enrollmentModel->getCoursesByStudent($userId);
+        // 1. Lấy dữ liệu tổng quan hiệu suất khóa học
+        $courseSummary = $this->courseModel->getPerformanceSummaryByInstructor($instructorId);
 
-        // 3. Gọi View
-        require_once 'views/student/course_progress.php';
+        // 2. Tính toán các chỉ số thống kê nhanh (KPIs)
+        $enrollmentCount = 0;
+        $totalCompleted = 0;
+        $pendingCourses = 0;
+
+        foreach ($courseSummary as $course) {
+            $enrollmentCount += $course['total_students'];
+            $totalCompleted += $course['completed_count'];
+
+            if ($course['status'] === 'pending' || $course['status'] === 'draft') {
+                $pendingCourses++;
+            }
+        }
+
+        // Lấy số học viên duy nhất chính xác hơn
+        $allEnrollments = $this->enrollmentModel->getAllStudentsByInstructor($instructorId);
+        $totalStudents = count(array_unique(array_column($allEnrollments, 'student_id')));
+
+        $data = [
+            'totalStudents' => $totalStudents,
+            'enrollmentCount' => $enrollmentCount,
+            'pendingCourses' => $pendingCourses,
+            'courseSummary' => $courseSummary,
+            // Tính toán tỷ lệ hoàn thành trung bình
+            'avgCompletionRate' => $enrollmentCount > 0 ? round(($totalCompleted / $enrollmentCount) * 100) : 0,
+        ];
+
+        // Tải View đã thiết kế
+        $this->loadView('instructor/overview.php', $data);
+    }
+
+    /**
+     * 8. Chi tiết tiến độ của TỪNG học viên
+     */
+    public function progressDetail($course_id, $student_id)
+    {
+        $instructorId = $this->checkInstructorAccess();
+
+        // 1. Lấy thông tin Khóa học và kiểm tra quyền sở hữu
+        $course = $this->courseModel->getById((int) $course_id);
+        if (!$course || ($course['instructor_id'] ?? 0) != $instructorId) {
+            header('Location: ' . BASE_URL . '/course/manage?msg=' . urlencode('Không có quyền xem chi tiết tiến độ này!'));
+            exit();
+        }
+
+        // 2. Lấy thông tin Học viên & Tiến độ
+        $studentInfo = $this->userModel->getById((int) $student_id);
+        $lessonsProgress = $this->lessonModel->getLessonsWithProgress($course_id, $student_id);
+
+        // 3. Chuẩn bị dữ liệu và tải View
+        $data = [
+            'course' => $course,
+            'studentInfo' => $studentInfo,
+            'lessonsProgress' => $lessonsProgress,
+        ];
+
+        $this->loadView('instructor/students/progress_detail.php', $data);
+    }
+    public function materials()
+    {
+        $studentId = $this->checkStudentAccess();
+
+        // [QUAN TRỌNG]: Gọi Model Material để lấy dữ liệu từ DB
+        $materials = $this->materialModel->getAllMaterialsByStudent($studentId);
+
+        // Bạn có thể cần bổ sung logic tính size ở đây nếu Model không làm
+        foreach ($materials as &$m) {
+            $m['course_title'] = $m['course_title'] ?? 'N/A'; // Đảm bảo key tồn tại
+            // Giả lập size và type cho View
+            $m['type'] = $m['file_type'] ?? 'unknown';
+            $m['size'] = '1.2 MB'; // Thay bằng logic tính size thực tế nếu có
+        }
+        unset($m); // Phá hủy liên kết sau vòng lặp
+
+        $data = [
+            'pageTitle' => 'Tài liệu học tập của tôi',
+            'materials' => $materials // Dữ liệu từ DB
+        ];
+
+        $this->loadView('student/materials.php', $data);
     }
 }
-?>
