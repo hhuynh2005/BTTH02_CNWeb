@@ -1,367 +1,403 @@
 <?php
-// File: controllers/LessonController.php - HOÀN CHỈNH VÀ ĐÃ KHẮC PHỤC LỖI KHỞI TẠO
+// File: models/Lesson.php
 
-// Load Models & Config cần thiết
-require_once MODELS_PATH . '/Lesson.php';
-require_once MODELS_PATH . '/Course.php';
-require_once MODELS_PATH . '/Material.php';
-require_once CONFIG_PATH . '/Database.php';
+require_once 'config/Database.php';
 
-class LessonController
+class Lesson
 {
-    private $lessonModel;
-    private $courseModel;
-    private $materialModel;
-    private $db; // Thuộc tính để lưu trữ kết nối DB
+    private $conn;
+    private $table = 'lessons';
 
     public function __construct()
     {
-        // 1. KHỞI TẠO KẾT NỐI DATABASE
         $database = new Database();
-        $this->db = $database->getConnection();
-        $db = $this->db;
-
-        // 2. KHỞI TẠO CÁC MODEL VỚI KẾT NỐI ($db) - KHẮC PHỤC ArgumentCountError
-        $this->lessonModel = new Lesson($db);
-        $this->courseModel = new Course($db);
-        $this->materialModel = new Material($db);
-
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        $this->conn = $database->getConnection();
     }
 
-    // --- Helper Methods ---
-    private function checkInstructorAccess()
-    {
-        if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? 0) != 1) {
-            header('Location: ' . BASE_URL . '/auth/login?msg=' . urlencode('Bạn cần đăng nhập với quyền Giảng viên!'));
-            exit();
-        }
-        return $_SESSION['user_id'];
-    }
 
-    private function redirect($url, $message = null, $type = 'success')
-    {
-        if ($message) {
-            $_SESSION['message'] = $message;
-            $_SESSION['message_type'] = $type;
-        }
-        header('Location: ' . $url);
-        exit();
-    }
-
-    private function loadView($viewPath, $data = [])
-    {
-        extract($data);
-        $fullPath = VIEWS_PATH . '/' . $viewPath;
-        if (pathinfo($fullPath, PATHINFO_EXTENSION) !== 'php') {
-            $fullPath .= '.php';
-        }
-
-        if (!file_exists($fullPath)) {
-            die("View không tồn tại: {$fullPath}");
-        }
-
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        ob_start();
-        include $fullPath;
-        ob_end_flush();
-    }
-
-    // =====================================================================
-    // PHẦN 1: QUẢN LÝ BÀI HỌC (CRUD)
-    // =====================================================================
-
-    public function manage($course_id)
-    {
-        $instructor_id = $this->checkInstructorAccess();
-        $course = $this->courseModel->getById($course_id);
-
-        if (!$course || $course['instructor_id'] != $instructor_id) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền quản lý khóa học này.', 'error');
-        }
-
-        $lessons = $this->lessonModel->getByCourseId($course_id);
-        $data = ['course' => $course, 'lessons' => $lessons];
-        $this->loadView('instructor/lessons/manage.php', $data);
-    }
-
-    public function create($course_id)
-    {
-        $instructor_id = $this->checkInstructorAccess();
-        $course = $this->courseModel->getById($course_id);
-
-        if (!$course || $course['instructor_id'] != $instructor_id) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền!', 'error');
-        }
-
-        $lessons = $this->lessonModel->getByCourseId($course_id);
-        $total_lessons = count($lessons);
-
-        $data = ['course' => $course, 'total_lessons' => $total_lessons];
-        $this->loadView('instructor/lessons/create.php', $data);
-    }
-
-    public function store($course_id)
-    {
-        $instructor_id = $this->checkInstructorAccess();
-        $course = $this->courseModel->getById($course_id);
-
-        if (!$course || $course['instructor_id'] != $instructor_id) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền!', 'error');
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect(BASE_URL . '/lesson/create/' . $course_id);
-        }
-
-        // Validate
-        $errors = [];
-        if (empty($_POST['title']) || strlen(trim($_POST['title'])) < 3) {
-            $errors[] = "Tiêu đề phải có ít nhất 3 ký tự";
-        }
-        if (empty($_POST['content'])) {
-            $errors[] = "Nội dung không được để trống";
-        }
-        if (empty($_POST['order_num']) || $_POST['order_num'] < 1) {
-            $errors[] = "Thứ tự bài học không hợp lệ";
-        }
-
-        if (!empty($errors)) {
-            $error_msg = implode(", ", $errors);
-            $this->redirect(BASE_URL . '/lesson/create/' . $course_id . '?msg=' . urlencode($error_msg), null, 'error');
-        }
-
-        $result = $this->lessonModel->create(
-            $course_id,
-            trim($_POST['title']),
-            trim($_POST['content']),
-            trim($_POST['video_url'] ?? ''),
-            (int) $_POST['order_num']
-        );
-
-        if ($result) {
-            $this->redirect(BASE_URL . '/lesson/manage/' . $course_id, '✅ Tạo bài học thành công!', 'success');
-        } else {
-            $this->redirect(BASE_URL . '/lesson/create/' . $course_id, '❌ Tạo bài học thất bại!', 'error');
-        }
-    }
-
-    public function edit($lesson_id)
-    {
-        $instructor_id = $this->checkInstructorAccess();
-        $lesson = $this->lessonModel->getById($lesson_id);
-
-        if (!$lesson) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không tìm thấy bài học!', 'error');
-        }
-
-        $course = $this->courseModel->getById($lesson['course_id']);
-        if (!$course || $course['instructor_id'] != $instructor_id) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền!', 'error');
-        }
-
-        $data = ['course' => $course, 'lesson' => $lesson];
-        $this->loadView('instructor/lessons/edit.php', $data);
-    }
-
-    public function update($lesson_id)
-    {
-        $instructor_id = $this->checkInstructorAccess();
-        $lesson = $this->lessonModel->getById($lesson_id);
-
-        if (!$lesson) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không tìm thấy bài học!', 'error');
-        }
-
-        $course = $this->courseModel->getById($lesson['course_id']);
-        if (!$course || $course['instructor_id'] != $instructor_id) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền!', 'error');
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect(BASE_URL . '/lesson/edit/' . $lesson_id);
-        }
-
-        // Validate
-        $errors = [];
-        if (empty($_POST['title']) || strlen(trim($_POST['title'])) < 3) {
-            $errors[] = "Tiêu đề phải có ít nhất 3 ký tự";
-        }
-        if (empty($_POST['content'])) {
-            $errors[] = "Nội dung không được để trống";
-        }
-        if (empty($_POST['order_num']) || $_POST['order_num'] < 1) {
-            $errors[] = "Thứ tự bài học không hợp lệ";
-        }
-
-        if (!empty($errors)) {
-            $error_msg = implode(", ", $errors);
-            $this->redirect(BASE_URL . '/lesson/edit/' . $lesson_id . '?msg=' . urlencode($error_msg), null, 'error');
-        }
-
-        $result = $this->lessonModel->update(
-            $lesson_id,
-            trim($_POST['title']),
-            trim($_POST['content']),
-            trim($_POST['video_url'] ?? ''),
-            (int) $_POST['order_num']
-        );
-
-        if ($result) {
-            $this->redirect(BASE_URL . '/lesson/manage/' . $course['id'], '✅ Cập nhật thành công!', 'success');
-        } else {
-            $this->redirect(BASE_URL . '/lesson/edit/' . $lesson_id, '❌ Cập nhật bài học thất bại!', 'error');
-        }
-    }
-
-    public function delete($lesson_id)
-    {
-        $instructor_id = $this->checkInstructorAccess();
-        $lesson = $this->lessonModel->getById($lesson_id);
-
-        if (!$lesson) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không tìm thấy bài học!', 'error');
-        }
-
-        $course = $this->courseModel->getById($lesson['course_id']);
-        if (!$course || $course['instructor_id'] != $instructor_id) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền!', 'error');
-        }
-
-        $course_id = $lesson['course_id'];
-
-        if ($this->lessonModel->delete($lesson_id)) {
-            $this->redirect(BASE_URL . '/lesson/manage/' . $course_id, '✅ Xóa bài học thành công!', 'success');
-        } else {
-            $this->redirect(BASE_URL . '/lesson/manage/' . $course_id, '❌ Xóa bài học thất bại!', 'error');
-        }
-    }
-
-    // ... (Thêm các hàm preview, moveUp, moveDown, reorder, export cũ của bạn vào đây nếu cần)
-
-    // =====================================================================
-    // UPLOAD VÀ QUẢN LÝ TÀI LIỆU (Material Management)
-    // =====================================================================
-
-    /**
-     * [GET] Hiển thị Danh sách Tài liệu đính kèm cho một Bài học.
-     * URL: /lesson/materials/{lesson_id}
+    /* =========================================================================
+     * PHẦN 1 — STUDENT VIEW (Học viên xem bài học)
+     * =========================================================================
      */
-    public function materials(int $lesson_id)
+
+    // Lấy danh sách bài học của 1 khóa học (sắp theo thứ tự)
+    public function getByCourseId(int $course_id)
     {
-        $instructor_id = $this->checkInstructorAccess();
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE course_id = :course_id
+                  ORDER BY order_num ASC";
 
-        // 1. Lấy thông tin Bài học và kiểm tra quyền
-        // Cần đảm bảo LessonModel có hàm getLessonDetailsById (đã thảo luận ở bước trước)
-        $lesson = $this->lessonModel->getLessonDetailsById($lesson_id);
-        if (!$lesson) {
-            $this->redirect(BASE_URL . '/course/manage', 'Bài học không tồn tại!', 'error');
-        }
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->execute();
 
-        $course = $this->courseModel->getById($lesson['course_id']);
-        if (!$course || $course['instructor_id'] != $instructor_id) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền!', 'error');
-        }
-
-        $materials = $this->materialModel->getByLessonId($lesson_id);
-        $data = ['course' => $course, 'lesson' => $lesson, 'materials' => $materials];
-
-        // QUYẾT ĐỊNH QUAN TRỌNG: 
-        // Nếu bạn muốn hiển thị DANH SÁCH tài liệu, dùng: 
-        // $this->loadView('instructor/lesson/materials_list', $data); 
-
-        // NẾU BẠN MUỐN CHUYỂN THẲNG ĐẾN TRANG UPLOAD, DÙNG:
-        $this->loadView('instructor/materials/upload', $data); // Trỏ thẳng đến form upload
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    /**
-     * [GET] Hiển thị Form đăng tải Tài liệu
-     * URL: /lesson/uploadMaterialForm/{lesson_id}
+
+    // [BỔ SUNG] Khắc phục lỗi: Call to undefined method Lesson::getLessonsByCourse()
+    // Phương thức này được Controller gọi để lấy danh sách bài học theo Khóa học ID.
+    public function getLessonsByCourse(int $course_id)
+    {
+        // Sử dụng lại logic đã có: Lấy danh sách bài học theo ID khóa học
+        return $this->getByCourseId($course_id);
+    }
+
+    // [BỔ SUNG] Bí danh cho phương thức đếm bài học
+    // Controller có thể dùng tên này để tính tiến độ
+    public function countLessonsByCourse(int $course_id)
+    {
+        // Sử dụng lại logic đã có: Đếm số bài học trong khóa học
+        return $this->countByCourseId($course_id);
+    }
+
+    // Lấy chi tiết bài học theo ID
+    public function getById(int $id)
+    {
+        $query = "SELECT * FROM " . $this->table . " WHERE id = :id LIMIT 1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy bài học đầu tiên của khóa học
+    public function getFirstLesson(int $course_id)
+    {
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE course_id = :course_id
+                  ORDER BY order_num ASC LIMIT 1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy chi tiết bài học (join thêm thông tin khóa học)
+    public function getLessonDetailsById(int $lesson_id)
+    {
+        // Giả định có bảng lessons (l) và courses (c)
+        $query = "SELECT 
+                    l.id, 
+                    l.course_id, 
+                    l.title AS lesson_title,
+                    l.content,
+                    l.video_url,
+                    l.order_num,
+                    c.title AS course_title,
+                    c.instructor_id
+                  FROM lessons l
+                  JOIN courses c ON l.course_id = c.id
+                  WHERE l.id = :lesson_id
+                  LIMIT 1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':lesson_id', $lesson_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy danh sách bài học kèm trạng thái tiến độ (Giả lập nếu chưa có bảng progress)
+    public function getLessonsWithProgress($course_id, $student_id)
+    {
+        // TRUY VẤN TẠM THỜI (TẮT JOIN VỚI lesson_progress nếu chưa có)
+        // CẦN BỔ SUNG LOGIC JOIN VỚI BẢNG lesson_progress NẾU CÓ.
+        $query = "SELECT 
+                    l.id AS lesson_id, 
+                    l.title AS lesson_title,
+                    -- l.content_type, 
+                    l.order_num,
+                    -- Lấy trạng thái từ bảng lesson_progress (nếu có)
+                    IFNULL(lp.completion_date, NULL) AS completion_date,
+                    IF(lp.id IS NOT NULL, 1, 0) AS is_completed 
+                  FROM " . $this->table . " l
+                  LEFT JOIN lesson_progress lp 
+                       ON l.id = lp.lesson_id AND lp.student_id = :student_id
+                  WHERE l.course_id = :course_id
+                  ORDER BY l.order_num ASC";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
+    /* =========================================================================
+     * PHẦN 2 — INSTRUCTOR CRUD (Thêm, Sửa, Xóa Bài học)
+     * =========================================================================
      */
-    public function uploadMaterialForm(int $lesson_id)
+
+    // CREATE (Thêm mới bài học)
+    public function create(int $course_id, string $title, string $content, string $video_url, int $order)
     {
-        $instructorId = $this->checkInstructorAccess();
-        $lesson = $this->lessonModel->getLessonDetailsById($lesson_id);
-        if (!$lesson) {
-            $this->redirect(BASE_URL . '/course/manage', 'Bài học không tồn tại!', 'error');
-        }
-        $course = $this->courseModel->getById($lesson['course_id']);
-        if (!$course || ($course['instructor_id'] ?? 0) != $instructorId) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền!', 'error');
-        }
+        $query = "INSERT INTO " . $this->table . " 
+                  (course_id, title, content, video_url, order_num, created_at)
+                  VALUES (:course_id, :title, :content, :video_url, :order_num, NOW())";
 
-        // BỔ SUNG LẤY DANH SÁCH TÀI LIỆU Ở ĐÂY
-        $materials = $this->materialModel->getByLessonId($lesson_id); // Dòng này là bắt buộc
+        $stmt = $this->conn->prepare($query);
 
-        $data = [
-            'lesson' => $lesson,
-            'course' => $course,
-            'materials' => $materials // TRUYỀN BIẾN DANH SÁCH VÀO VIEW
-        ];
+        $clean_title = htmlspecialchars(strip_tags($title));
+        $clean_video = htmlspecialchars(strip_tags($video_url));
 
-        $this->loadView('instructor/materials/upload.php', $data);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->bindParam(':title', $clean_title);
+        $stmt->bindParam(':content', $content); // content có thể chứa HTML
+        $stmt->bindParam(':video_url', $clean_video);
+        $stmt->bindParam(':order_num', $order, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    // READ: tất cả bài học theo course_id (dùng cho trang instructor, trả về PDOStatement)
+    public function getAllByCourseId(int $course_id)
+    {
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE course_id = :course_id 
+                  ORDER BY order_num ASC";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt;
+    }
+
+    // UPDATE (Cập nhật bài học)
+    public function update(int $id, string $title, string $content, string $video_url, int $order)
+    {
+        $query = "UPDATE " . $this->table . " 
+                  SET title = :title,
+                      content = :content,
+                      video_url = :video_url,
+                      order_num = :order_num
+                  WHERE id = :id";
+
+        $stmt = $this->conn->prepare($query);
+
+        $clean_title = htmlspecialchars(strip_tags($title));
+        $clean_video = htmlspecialchars(strip_tags($video_url));
+
+        $stmt->bindParam(':title', $clean_title);
+        $stmt->bindParam(':content', $content);
+        $stmt->bindParam(':video_url', $clean_video);
+        $stmt->bindParam(':order_num', $order, PDO::PARAM_INT);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    // DELETE (Xóa một bài học)
+    public function delete(int $id)
+    {
+        $query = "DELETE FROM " . $this->table . " WHERE id = :id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    // Xóa tất cả bài học của khóa học (Dùng khi xóa khóa học)
+    public function deleteAllByCourseId(int $course_id)
+    {
+        $query = "DELETE FROM " . $this->table . " WHERE course_id = :course_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    // Kiểm tra bài học có tồn tại
+    public function exists(int $id)
+    {
+        $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['count'] > 0;
     }
 
 
-    /**
-     * [POST] Xử lý việc đăng tải file và lưu vào database
-     * URL: /lesson/uploadMaterial
+    /* =========================================================================
+     * PHẦN 3 — HÀM MỞ RỘNG CHO GIẢNG VIÊN (Quản lý thứ tự, thống kê)
+     * =========================================================================
      */
-    public function uploadMaterial()
+
+    // Đếm số bài học trong khóa học
+    public function countByCourseId(int $course_id)
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect(BASE_URL . '/instructor/dashboard', 'Truy cập không hợp lệ.', 'error');
-        }
+        $query = "SELECT COUNT(*) as total FROM " . $this->table . " 
+                  WHERE course_id = :course_id";
 
-        $instructorId = $this->checkInstructorAccess();
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->execute();
 
-        $lesson_id = $_POST['lesson_id'] ?? 0;
-        $material_name = $_POST['material_name'] ?? '';
-
-        // 1. Xác thực Lesson và Quyền sở hữu
-        $lesson = $this->lessonModel->getLessonDetailsById($lesson_id);
-        if (!$lesson) {
-            $this->redirect(BASE_URL . '/course/manage', 'Bài học không tồn tại.', 'error');
-        }
-        $course = $this->courseModel->getById($lesson['course_id']);
-        if (!$course || ($course['instructor_id'] ?? 0) != $instructorId) {
-            $this->redirect(BASE_URL . '/course/manage', 'Không có quyền.', 'error');
-        }
-
-        // 2. Xử lý File Upload
-        if (empty($_FILES['file_upload']['name'])) {
-            $this->redirect(BASE_URL . "/lesson /materials/$lesson_id", 'Vui lòng chọn tệp để tải lên.', 'error');
-        }
-
-        $file = $_FILES['file_upload'];
-        $uploadDir = 'assets/uploads/materials/';
-
-        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $fileName = uniqid() . '_' . time() . '.' . $fileExtension;
-        $targetFile = $uploadDir . $fileName;
-
-        if (move_uploaded_file($file['tmp_name'], $targetFile)) {
-
-            // 3. Lưu thông tin vào Database (Sử dụng Material Model)
-            $result = $this->materialModel->create(
-                $lesson_id,
-                $material_name,
-                $targetFile,
-                $fileExtension
-            );
-
-            if ($result) {
-                $this->redirect(BASE_URL . "/lesson/materials/$lesson_id", 'Đã đăng tải tài liệu thành công!', 'success');
-            } else {
-                // Nếu lưu DB lỗi, xóa file đã upload
-                unlink($targetFile);
-                $this->redirect(BASE_URL . "/lesson/uploadMaterialForm/$lesson_id", 'Lỗi: Không thể lưu thông tin vào CSDL.', 'error');
-            }
-        } else {
-            $this->redirect(BASE_URL . "/lesson/uploadMaterialForm/$lesson_id", 'Lỗi: Tải tệp lên không thành công.', 'error');
-        }
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['total'];
     }
+
+    // Lấy order lớn nhất trong khóa học
+    public function getMaxOrder(int $course_id)
+    {
+        $query = "SELECT MAX(order_num) as max_order FROM " . $this->table . " 
+                  WHERE course_id = :course_id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Trả về 0 nếu không có bài học nào
+        return $result['max_order'] ?: 0;
+    }
+
+    // Cập nhật chỉ thứ tự bài học
+    public function updateOrder(int $id, int $order)
+    {
+        $query = "UPDATE " . $this->table . " 
+                  SET order_num = :order_num 
+                  WHERE id = :id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':order_num', $order, PDO::PARAM_INT);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    // Hoán đổi thứ tự bài học
+    public function swapOrder(int $id1, int $id2)
+    {
+        $lesson1 = $this->getById($id1);
+        $lesson2 = $this->getById($id2);
+
+        if (!$lesson1 || !$lesson2) {
+            return false;
+        }
+
+        // Hoán đổi order_num
+        $tempOrder = $lesson1['order_num'];
+        $this->updateOrder($id1, $lesson2['order_num']);
+        $this->updateOrder($id2, $tempOrder);
+
+        return true;
+    }
+
+    // Di chuyển bài học lên (hoán đổi với bài học ngay trước đó)
+    public function moveUp(int $id)
+    {
+        $lesson = $this->getById($id);
+        if (!$lesson) {
+            return false;
+        }
+
+        // Tìm bài học có order_num nhỏ hơn (ngay trước nó)
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE course_id = :course_id AND order_num < :order_num
+                  ORDER BY order_num DESC LIMIT 1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $lesson['course_id'], PDO::PARAM_INT);
+        $stmt->bindParam(':order_num', $lesson['order_num'], PDO::PARAM_INT);
+        $stmt->execute();
+
+        $previousLesson = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($previousLesson) {
+            return $this->swapOrder($id, $previousLesson['id']);
+        }
+
+        return false;
+    }
+
+    // Di chuyển bài học xuống (hoán đổi với bài học ngay sau đó)
+    public function moveDown(int $id)
+    {
+        $lesson = $this->getById($id);
+        if (!$lesson) {
+            return false;
+        }
+
+        // Tìm bài học có order_num lớn hơn (ngay sau nó)
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE course_id = :course_id AND order_num > :order_num
+                  ORDER BY order_num ASC LIMIT 1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $lesson['course_id'], PDO::PARAM_INT);
+        $stmt->bindParam(':order_num', $lesson['order_num'], PDO::PARAM_INT);
+        $stmt->execute();
+
+        $nextLesson = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($nextLesson) {
+            return $this->swapOrder($id, $nextLesson['id']);
+        }
+
+        return false;
+    }
+
+    // Kiểm tra quyền sở hữu bài học (dùng cho instructor)
+    public function isOwnedByInstructor(int $lesson_id, int $instructor_id)
+    {
+        $query = "SELECT c.instructor_id 
+                  FROM " . $this->table . " l
+                  JOIN courses c ON l.course_id = c.id
+                  WHERE l.id = :lesson_id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':lesson_id', $lesson_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result && $result['instructor_id'] == $instructor_id;
+    }
+
+    // Lấy thống kê bài học (dùng cho instructor dashboard)
+    public function getStatistics(int $course_id)
+    {
+        $query = "SELECT 
+                    COUNT(*) as total_lessons,
+                    SUM(CASE WHEN video_url IS NOT NULL AND video_url != '' THEN 1 ELSE 0 END) as videos_count,
+                    AVG(LENGTH(content)) as avg_content_length,
+                    MIN(created_at) as first_created,
+                    MAX(created_at) as last_updated
+                  FROM " . $this->table . " 
+                  WHERE course_id = :course_id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Tìm kiếm bài học trong khóa học
+    public function searchInCourse(int $course_id, string $keyword)
+    {
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE course_id = :course_id 
+                  AND (title LIKE :keyword OR content LIKE :keyword)
+                  ORDER BY order_num ASC";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':course_id', $course_id, PDO::PARAM_INT);
+        $keyword = "%{$keyword}%";
+        $stmt->bindParam(':keyword', $keyword);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
 }
