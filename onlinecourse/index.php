@@ -14,7 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // ====================================================
-// 1. CẤU HÌNH HẰNG SỐ & ĐƯỜNG DẪN
+// 1. CẤU HỒNG HẰNG SỐ & ĐƯỜNG DẪN
 // ====================================================
 if (!defined('ROOT_PATH')) {
     // Đường dẫn vật lý
@@ -101,12 +101,10 @@ elseif (strpos($uri, 'auth/') === 0) {
 // STUDENT / ENROLLMENT ROUTES
 // ====================================================
 
-// [ROUTE QUAN TRỌNG]: Learning Interface (student/course/{id}) - PHẢI ĐẶT TRÊN courses/detail
-// Regex khớp: student/course/3, student/course/3/
+// [ROUTE QUAN TRỌNG]: Learning Interface (student/course/{id})
 elseif (preg_match('/^student\/course\/(\d+)/', $uri, $matches)) {
     $controllerName = 'EnrollmentController';
     $actionName = 'learning';
-    // $matches[1] là ID khóa học. Controller sẽ xử lý tham số query (?lesson_id=X).
     $params = [$matches[1]];
 }
 
@@ -125,6 +123,20 @@ elseif ($uri === 'student/progress') {
     $controllerName = 'EnrollmentController';
     $actionName = 'progressList';
 }
+// Route Student Materials [ĐÃ THÊM ROUTE]
+elseif ($uri === 'student/materials') {
+    $controllerName = 'EnrollmentController';
+    $actionName = 'materials';
+}
+// Route Student General actions (Phải đặt cuối cùng trong khối Student để bắt các action còn lại, ví dụ: /student/profile)
+elseif (strpos($uri, 'student/') === 0) {
+    $controllerName = 'EnrollmentController';
+    $parts = explode('/', substr($uri, 8));
+    $actionName = $parts[0] ?? 'dashboard';
+    $params = array_slice($parts, 1);
+}
+
+
 // Route Progress Detail (enrollment/progress/{course_id}/{student_id})
 elseif (preg_match('/^enrollment\/progress\/(\d+)\/(\d+)$/', $uri, $matches)) {
     $controllerName = 'EnrollmentController';
