@@ -736,4 +736,5 @@ class CourseController
 
         $this->loadView('courses/index.php', $data);
     }
+
 }

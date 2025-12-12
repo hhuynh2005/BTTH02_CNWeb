@@ -1,6 +1,7 @@
 <?php
-// File: views/instructor/students/list.php
-// Dữ liệu cần: $course (Thông tin khóa học), $students (Danh sách học viên)
+// File: views/instructor/students/summary.php
+// Hiển thị tổng quan TẤT CẢ học viên và tiến độ của họ trên TẤT CẢ các khóa học của Giảng viên.
+// Dữ liệu cần: $allEnrollments (Tất cả đăng ký), $totalStudents (Tổng số học viên duy nhất)
 // Giả định BASE_URL đã được định nghĩa
 ?>
 <!DOCTYPE html>
@@ -9,18 +10,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danh sách Học viên - <?php echo htmlspecialchars($course['title'] ?? 'Khóa học'); ?></title>
+    <title>Tổng quan Học viên - Giảng viên</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* CSS DÀNH RIÊNG CHO TRANG NÀY - Đã tối ưu cho Dashboard Giảng viên */
+        /* CSS Cơ bản - Sử dụng lại style từ các file trước */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f9;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 50px auto;
             padding: 30px;
             background: white;
@@ -39,53 +40,51 @@
             font-size: 28px;
         }
 
-        .course-info {
+        .stats-summary {
             background: #eef2ff;
             border-left: 5px solid #4f46e5;
             padding: 15px;
             border-radius: 6px;
             margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .course-info h2 {
-            font-size: 20px;
+        .stats-summary p {
+            margin: 0;
+            font-size: 16px;
             color: #1e293b;
-            margin-top: 0;
-        }
-
-        .course-info p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #64748b;
+            font-weight: 500;
         }
 
         /* Table Styles */
-        .student-table {
+        .summary-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
 
-        .student-table th,
-        .student-table td {
+        .summary-table th,
+        .summary-table td {
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #e2e8f0;
             font-size: 14px;
         }
 
-        .student-table th {
+        .summary-table th {
             background-color: #f3f4f6;
             color: #1e293b;
             font-weight: 600;
             text-transform: uppercase;
         }
 
-        .student-table tbody tr:hover {
+        .summary-table tbody tr:hover {
             background-color: #f8fafc;
         }
 
-        /* Progress Bar */
+        /* Progress Bar (Sử dụng lại từ list.php) */
         .progress-bar-container {
             height: 10px;
             background: #e2e8f0;
@@ -97,36 +96,41 @@
         .progress-fill {
             height: 100%;
             background: #10b981;
-            /* Green color */
             transition: width 0.5s ease;
         }
 
-        /* Badges */
+        /* Badges (Sử dụng lại từ list.php) */
         .badge {
             padding: 4px 10px;
             border-radius: 15px;
             font-size: 0.75em;
             font-weight: 600;
             text-transform: capitalize;
-            /* Chuyển thành viết hoa chữ cái đầu */
         }
 
-        /* completed */
         .badge-success {
             background: #dcfce7;
             color: #047857;
         }
 
-        /* active */
         .badge-warning {
             background: #fef3c7;
             color: #d97706;
         }
 
-        /* dropped */
         .badge-danger {
             background: #fee2e2;
             color: #991b1b;
+        }
+
+        .action-link {
+            color: #4f46e5;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .action-link:hover {
+            color: #3a0ca3;
         }
 
         /* No Data */
@@ -145,89 +149,67 @@
             color: #cbd5e1;
         }
 
-        /* Action Link */
-        .action-link {
-            color: #4f46e5;
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-
-        .action-link:hover {
-            color: #3a0ca3;
-        }
-
-        .action-btn {
+        /* Cần nút Quay lại DashBoard */
+        .btn-back {
             display: inline-block;
-            padding: 8px;
-            border-radius: 4px;
-            transition: background 0.3s;
-        }
-
-        .action-btn:hover {
-            background-color: #eef2ff;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                margin: 20px;
-                padding: 15px;
-            }
-
-            .student-table th,
-            .student-table td {
-                padding: 10px;
-            }
-
-            .student-table {
-                font-size: 12px;
-            }
+            margin-bottom: 20px;
+            text-decoration: none;
+            color: #4f46e5;
+            font-weight: 600;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <a href="<?php echo BASE_URL; ?>/course/manage" class="action-link"
-            style="margin-bottom: 20px; display: inline-block;">
-            <i class="fas fa-arrow-left"></i> Quay lại Quản lý Khóa học
+
+        <a href="<?php echo BASE_URL; ?>/instructor/dashboard" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Quay lại Dashboard
         </a>
 
-        <h1><i class="fas fa-users"></i> Danh sách Học viên</h1>
+        <h1><i class="fas fa-users"></i> Tổng quan Học viên</h1>
 
-        <div class="course-info">
-            <h2>Khóa học: <?php echo htmlspecialchars($course['title'] ?? 'N/A'); ?></h2>
-            <p>ID Khóa học: **<?php echo $course['id'] ?? 'N/A'; ?>** | Trạng thái:
-                **<?php echo htmlspecialchars($course['status'] ?? 'N/A'); ?>**</p>
-            <p>Mô tả:
-                <?php echo htmlspecialchars(mb_substr($course['description'] ?? 'Không có mô tả.', 0, 150, 'UTF-8')); ?>...
-            </p>
+        <?php
+        // Tính toán tổng số đăng ký và số học viên duy nhất (Nếu chưa làm trong Controller)
+        $totalEnrollments = isset($allEnrollments) ? count($allEnrollments) : 0;
+        $uniqueStudentIds = array_unique(array_column($allEnrollments, 'student_id'));
+        $totalStudents = isset($totalStudents) ? $totalStudents : count($uniqueStudentIds);
+
+        ?>
+        <div class="stats-summary">
+            <p>Tổng số đăng ký: **<?php echo $totalEnrollments; ?>**</p>
+            <p>Tổng số học viên duy nhất: **<?php echo $totalStudents; ?>**</p>
         </div>
 
-        <?php if (!empty($students)): ?>
-            <p style="font-size: 16px; margin-bottom: 15px;">Tổng số học viên đã đăng ký:
-                **<?php echo count($students); ?>**</p>
+
+        <?php if (!empty($allEnrollments)): ?>
             <div style="overflow-x: auto;">
-                <table class="student-table">
+                <table class="summary-table">
                     <thead>
                         <tr>
                             <th>ID HV</th>
                             <th>Họ và Tên</th>
-                            <th>Email</th>
+                            <th>Khóa học</th>
                             <th>Ngày đăng ký</th>
                             <th style="width: 150px;">Tiến độ</th>
                             <th>Trạng thái</th>
-                            <th>Hành động</th>
+                            <th>Chi tiết</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($students as $student): ?>
+                        <?php foreach ($allEnrollments as $item): ?>
                             <tr>
-                                <td><?php echo $student['student_id']; ?></td>
-                                <td><?php echo htmlspecialchars($student['fullname'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($student['email'] ?? 'N/A'); ?></td>
-                                <td><?php echo date('d/m/Y', strtotime($student['enrolled_date'] ?? 'N/A')); ?></td>
+                                <td><?php echo $item['student_id']; ?></td>
+                                <td><?php echo htmlspecialchars($item['student_name'] ?? 'N/A'); ?></td>
                                 <td>
-                                    <?php $progress = $student['progress'] ?? 0; ?>
+                                    <a href="<?php echo BASE_URL; ?>/course/detail/<?php echo $item['course_id']; ?>"
+                                        class="action-link" target="_blank">
+                                        <?php echo htmlspecialchars($item['course_title'] ?? 'N/A'); ?>
+                                    </a>
+                                </td>
+                                <td><?php echo date('d/m/Y', strtotime($item['enrolled_date'] ?? 'N/A')); ?></td>
+                                <td>
+                                    <?php $progress = $item['progress'] ?? 0; ?>
                                     <div class="progress-bar-container">
                                         <div class="progress-fill" style="width: <?php echo $progress; ?>%;"></div>
                                     </div>
@@ -235,21 +217,16 @@
                                 </td>
                                 <td>
                                     <?php
-                                    // Gán giá trị mặc định nếu không tồn tại
-                                    $status = $student['status'] ?? 'active';
-
-                                    // Xác định class CSS cho badge
-                                    $badge_class = match ($status) {
-                                        'completed' => 'badge-success',
-                                        'dropped' => 'badge-danger',
-                                        default => 'badge-warning' // Mặc định là 'active' hoặc trạng thái khác
-                                    };
-
-                                    // Chuyển đổi trạng thái sang tiếng Việt
+                                    $status = $item['enrollment_status'] ?? 'active';
                                     $status_display = match ($status) {
                                         'completed' => 'Hoàn thành',
                                         'dropped' => 'Hủy khóa học',
                                         default => 'Đang học'
+                                    };
+                                    $badge_class = match ($status) {
+                                        'completed' => 'badge-success',
+                                        'dropped' => 'badge-danger',
+                                        default => 'badge-warning'
                                     };
                                     ?>
                                     <span class="badge <?php echo $badge_class; ?>">
@@ -257,7 +234,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="<?php echo BASE_URL; ?>/enrollment/progress/<?php echo $course['id']; ?>/<?php echo $student['student_id']; ?>"
+                                    <a href="<?php echo BASE_URL; ?>/enrollment/progress/<?php echo $item['course_id']; ?>/<?php echo $item['student_id']; ?>"
                                         title="Xem chi tiết tiến độ" class="action-link action-btn">
                                         <i class="fas fa-chart-line"></i>
                                     </a>
@@ -269,13 +246,9 @@
             </div>
         <?php else: ?>
             <div class="no-data">
-                <i class="fas fa-box-open"></i>
+                <i class="fas fa-user-slash"></i>
                 <h3>Chưa có học viên nào</h3>
-                <p>Khóa học này hiện chưa có học viên nào đăng ký. Hãy kiểm tra nội dung và quảng bá khóa học!</p>
-                <a href="<?php echo BASE_URL; ?>/course/edit/<?php echo $course['id'] ?? ''; ?>" class="action-link"
-                    style="font-weight: 600;">
-                    <i class="fas fa-edit"></i> Chỉnh sửa khóa học
-                </a>
+                <p>Hiện tại chưa có học viên nào đăng ký vào bất kỳ khóa học nào do bạn tạo.</p>
             </div>
         <?php endif; ?>
     </div>

@@ -1,36 +1,62 @@
-<!-- // Điều hướng cho trang chủ và các trang tĩnh
-
-//     Lấy danh sách khóa học từ models/Course.php 
-// và hiển thị trên views/home/index.php
-// getNewestCourses(): Lấy 5 khóa học mới nhất để hiển thị trên trang chủ
-
-// done -->
-
 <?php
-class HomeController {
+// File: controllers/HomeController.php - ĐÃ KHẮC PHỤC LỖI KHỞI TẠO MODEL
 
-    public function index() {
-        // 1. Nạp Model Course
-        // (Đường dẫn tính từ file index.php gốc)
-        if (file_exists('models/Course.php')) {
-            require_once 'models/Course.php';
-        } else {
-            die("Lỗi: Không tìm thấy file models/Course.php");
+// Load các Models và Config cần thiết (Sử dụng đường dẫn hằng số)
+require_once MODELS_PATH . '/Course.php';
+require_once CONFIG_PATH . '/Database.php'; // Cần thiết để khởi tạo kết nối
+
+class HomeController
+{
+    private $courseModel;
+    private $db; // Thuộc tính để lưu trữ kết nối DB
+
+    public function __construct()
+    {
+        // 1. KHỞI TẠO KẾT NỐI DATABASE
+        $database = new Database();
+        $this->db = $database->getConnection();
+        $db = $this->db;
+
+        // 2. KHỞI TẠO MODEL VỚI KẾT NỐI ($db)
+        $this->courseModel = new Course($db);
+
+        // Khởi tạo session
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    }
+
+    // Helper method để tải View (Nếu bạn chưa có)
+    private function loadView($viewPath, $data = [])
+    {
+        extract($data);
+        $fullPath = VIEWS_PATH . '/' . $viewPath;
+
+        if (!file_exists($fullPath)) {
+            die("View không tồn tại: {$fullPath}");
         }
 
-        // 2. Khởi tạo đối tượng Course Model
-        $courseModel = new Course();
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        ob_start();
+        include $fullPath;
+        ob_end_flush();
+    }
 
-        // 3. Lấy danh sách 5 khóa học mới nhất
-        // Hàm getNewestCourses() sẽ được định nghĩa trong Model
-        $newestCourses = $courseModel->getNewestCourses();
+    public function index()
+    {
+        // 1. Lấy 5 khóa học mới nhất (Model đã được khởi tạo trong constructor)
+        $newestCourses = $this->courseModel->getNewestCourses();
 
-        // 4. Gửi dữ liệu sang View và hiển thị giao diện
-        // Biến $newestCourses sẽ có hiệu lực bên trong file views/home/index.php
-        require_once 'views/home/index.php';
+        $data = [
+            'courses' => $newestCourses,
+            // Thêm các biến cần thiết khác nếu trang chủ cần (ví dụ: categories)
+        ];
+
+        // 2. Gọi view để hiển thị giao diện
+        // Giả định 'views/home/index.php' là 'home/index.php'
+        $this->loadView('home/index.php', $data);
     }
 }
 ?>
-
-// Luồng đã hoạt động, kết hợp với models/Course.php và views/home/index.php
-// đã hiển thị 5 khóa học mới nhất trên trang chủ. (ảnh đang lỗi và chưa xem chi tiết được)
