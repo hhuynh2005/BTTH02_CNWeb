@@ -1,6 +1,7 @@
 <?php
-// File: views/courses/index.php (Danh sách Khóa học công khai)
-// Dữ liệu cần thiết: $courses, $categories, $enrolledCourseIds
+// File: views/courses/index.php (Danh sách Khóa học công khai / Khám phá)
+// Dữ liệu từ Controller: $courses, $categories, $categoryId, $keyword, $enrolledCourseIds
+// =========================================================================
 
 $BASE_URL = $BASE_URL ?? '/base';
 $courses = $courses ?? [];
@@ -11,8 +12,16 @@ $enrolledCourseIds = $enrolledCourseIds ?? []; // Danh sách ID khóa học đã
 
 // Xác định nếu người dùng là Học viên đã đăng nhập
 $isStudentLoggedIn = ($_SESSION['user_role'] ?? -1) == 0;
-$userName = $_SESSION['fullname'] ?? '';
-$userId = $_SESSION['user_id'] ?? null;
+$userName = htmlspecialchars($_SESSION['fullname'] ?? 'Khách');
+
+// Xác định tiêu đề
+$pageTitle = 'Danh mục Khóa học';
+if ($isStudentLoggedIn) {
+    $pageTitle = 'Khám phá Khóa học mới';
+}
+if (!empty($keyword)) {
+    $pageTitle = 'Kết quả tìm kiếm: "' . htmlspecialchars($keyword) . '"';
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -20,21 +29,23 @@ $userId = $_SESSION['user_id'] ?? null;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danh mục Khóa học - Online Course</title>
+    <title><?php echo $pageTitle; ?> - Online Course</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
+        /* [CSS Styles từ file gốc của bạn] */
+        :root {
+            --primary-color: #4f46e5;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --dark-color: #1e293b;
         }
 
         body {
             background-color: #f9fafb;
             color: #334155;
+            font-family: 'Inter', sans-serif;
         }
 
         .navbar-public {
@@ -130,15 +141,15 @@ $userId = $_SESSION['user_id'] ?? null;
         }
 
         .level-Beginner {
-            background-color: #4f46e5;
+            background-color: var(--primary-color);
         }
 
         .level-Intermediate {
-            background-color: #f59e0b;
+            background-color: var(--warning-color);
         }
 
         .level-Advanced {
-            background-color: #ef4444;
+            background-color: var(--success-color);
         }
 
         .enrolled-badge {
@@ -229,16 +240,12 @@ $userId = $_SESSION['user_id'] ?? null;
             font-size: 0.9rem;
             transition: all 0.2s;
             cursor: pointer;
+            text-align: center;
         }
 
         .btn-enroll:hover:not(:disabled) {
             background-color: #4338ca;
             transform: translateY(-2px);
-        }
-
-        .btn-enroll:disabled {
-            background-color: #cbd5e1;
-            cursor: not-allowed;
         }
 
         .btn-enrolled {
@@ -249,6 +256,7 @@ $userId = $_SESSION['user_id'] ?? null;
             background-color: #059669;
         }
 
+        /* Chuyển .btn-detail thành button để dễ dàng sử dụng onclick */
         .btn-detail {
             flex: 1;
             padding: 0.6rem 1rem;
@@ -262,11 +270,18 @@ $userId = $_SESSION['user_id'] ?? null;
             text-decoration: none;
             display: inline-block;
             text-align: center;
+            cursor: pointer;
+            /* Thêm cursor pointer cho button */
         }
 
         .btn-detail:hover {
             background-color: #eef2ff;
             color: #4338ca;
+        }
+
+        /* Cần đảm bảo form đăng ký trong action-buttons cũng có flex: 1 */
+        .action-buttons form {
+            flex: 1;
         }
 
         .empty-state {
@@ -283,67 +298,14 @@ $userId = $_SESSION['user_id'] ?? null;
             margin-bottom: 1.5rem;
         }
 
-        .empty-state h3 {
-            color: #475569;
-            margin-bottom: 1rem;
-        }
-
-        .empty-state p {
-            color: #94a3b8;
-            margin-bottom: 2rem;
-        }
-
-        .stats-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-
-        /* Loading spinner */
-        .btn-enroll .spinner-border {
-            width: 1rem;
-            height: 1rem;
-            border-width: 2px;
-        }
-
-        /* Toast notification */
-        .toast-container {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 1050;
-        }
-
-        @media (max-width: 768px) {
-            .page-title {
-                font-size: 1.75rem;
-            }
-
-            .card-img-wrapper {
-                height: 160px;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-        }
+        /* [Kết thúc CSS Styles] */
     </style>
 </head>
 
 <body>
-    <!-- Toast Container -->
     <div class="toast-container">
-        <div id="enrollToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <i class="fas fa-check-circle text-success me-2"></i>
-                <strong class="me-auto">Thành công</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body"></div>
-        </div>
     </div>
 
-    <!-- Navigation Bar -->
     <nav class="navbar-public">
         <div class="container">
             <div class="d-flex justify-content-between align-items-center w-100">
@@ -375,7 +337,6 @@ $userId = $_SESSION['user_id'] ?? null;
         </div>
     </nav>
 
-    <!-- Page Header -->
     <div class="page-header">
         <div class="container text-center">
             <h1 class="page-title">
@@ -383,19 +344,21 @@ $userId = $_SESSION['user_id'] ?? null;
             </h1>
             <p class="page-subtitle mb-0">
                 <?php
-                echo $isStudentLoggedIn
-                    ? 'Tìm kiếm và đăng ký khóa học mới phù hợp với bạn'
-                    : 'Học tập mọi lúc, mọi nơi với các khóa học chất lượng cao';
+                if (!empty($keyword)) {
+                    echo 'Tìm thấy ' . count($courses) . ' khóa học phù hợp với từ khóa của bạn.';
+                } elseif ($isStudentLoggedIn) {
+                    echo 'Chào mừng, ' . $userName . '! Dưới đây là các khóa học mới bạn có thể tham gia.';
+                } else {
+                    echo 'Học tập mọi lúc, mọi nơi với các khóa học chất lượng cao';
+                }
                 ?>
             </p>
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="container pb-5">
-        <!-- Search & Filter Section -->
         <div class="search-filter-section">
-            <form method="GET" action="<?php echo BASE_URL; ?>/courses" class="row g-3">
+            <form method="GET" action="<?php echo BASE_URL; ?>/courses/search" class="row g-3">
                 <div class="col-md-8">
                     <div class="input-group">
                         <span class="input-group-text bg-white">
@@ -423,7 +386,6 @@ $userId = $_SESSION['user_id'] ?? null;
             </form>
         </div>
 
-        <!-- Courses Grid -->
         <?php if (!empty($courses)): ?>
             <div class="mb-3 d-flex justify-content-between align-items-center">
                 <small class="text-muted">
@@ -499,23 +461,33 @@ $userId = $_SESSION['user_id'] ?? null;
                                                     class="btn-enroll btn-enrolled">
                                                     <i class="fas fa-play-circle me-1"></i>Vào học
                                                 </a>
+                                                <a href="<?php echo BASE_URL; ?>/courses/detail/<?php echo $courseId; ?>"
+                                                    class="btn-detail">
+                                                    Chi tiết
+                                                </a>
                                             <?php else: ?>
-                                                <button class="btn-enroll enroll-btn" data-course-id="<?php echo $courseId; ?>"
-                                                    data-course-title="<?php echo htmlspecialchars($course['title']); ?>">
-                                                    <i class="fas fa-plus-circle me-1"></i>Đăng ký
+                                                <form method="POST" action="<?php echo BASE_URL; ?>/enrollment/register"
+                                                    style="display: inline; flex: 1;">
+                                                    <input type="hidden" name="course_id" value="<?php echo $courseId; ?>">
+                                                    <button type="submit" class="btn-enroll w-100">
+                                                        <i class="fas fa-plus-circle me-1"></i>Đăng ký
+                                                    </button>
+                                                </form>
+                                                <button type="button" class="btn-detail"
+                                                    onclick="alert('Vui lòng đăng ký khóa học để xem chi tiết nội dung đầy đủ.');">
+                                                    Chi tiết
                                                 </button>
                                             <?php endif; ?>
                                         <?php else: ?>
-                                            <a href="<?php echo BASE_URL; ?>/auth/login?redirect=/courses/detail/<?php echo $courseId; ?>"
+                                            <a href="<?php echo BASE_URL; ?>/auth/login?redirect=/enrollment/register"
                                                 class="btn-enroll">
                                                 <i class="fas fa-sign-in-alt me-1"></i>Đăng nhập để đăng ký
                                             </a>
+                                            <button type="button" class="btn-detail"
+                                                onclick="alert('Vui lòng đăng nhập để xem chi tiết và đăng ký khóa học.');">
+                                                Chi tiết
+                                            </button>
                                         <?php endif; ?>
-
-                                        <a href="<?php echo BASE_URL; ?>/courses/detail/<?php echo $courseId; ?>"
-                                            class="btn-detail">
-                                            Chi tiết
-                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -529,9 +501,14 @@ $userId = $_SESSION['user_id'] ?? null;
                 <h3>Không tìm thấy khóa học</h3>
                 <p>
                     <?php
-                    echo $isStudentLoggedIn
-                        ? 'Không có khóa học nào phù hợp với bộ lọc của bạn.'
-                        : 'Không có khóa học nào phù hợp với tìm kiếm của bạn. Vui lòng thử lại với từ khóa khác.';
+                    // Hiển thị thông báo khi không tìm thấy khóa học
+                    if (!empty($keyword)) {
+                        echo 'Không tìm thấy khóa học nào khớp với từ khóa/bộ lọc của bạn.';
+                    } elseif ($isStudentLoggedIn) {
+                        echo 'Bạn đã đăng ký tất cả các khóa học hiện có hoặc không có khóa học mới.';
+                    } else {
+                        echo 'Hiện tại không có khóa học công khai nào được tìm thấy. Vui lòng quay lại sau.';
+                    }
                     ?>
                 </p>
                 <?php if ($isStudentLoggedIn): ?>
@@ -548,90 +525,6 @@ $userId = $_SESSION['user_id'] ?? null;
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const enrollButtons = document.querySelectorAll('.enroll-btn');
-            const toast = new bootstrap.Toast(document.getElementById('enrollToast'));
-
-            enrollButtons.forEach(button => {
-                button.addEventListener('click', function () {
-                    const courseId = this.getAttribute('data-course-id');
-                    const courseTitle = this.getAttribute('data-course-title');
-                    const originalHTML = this.innerHTML;
-
-                    // Disable button and show loading
-                    this.disabled = true;
-                    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang xử lý...';
-
-                    // Send enrollment request
-                    fetch('<?php echo BASE_URL; ?>/api/enroll', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            course_id: courseId,
-                            user_id: <?php echo $userId ?? 'null'; ?>
-                        })
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Update button to "Vào học"
-                                this.classList.add('btn-enrolled');
-                                this.innerHTML = '<i class="fas fa-play-circle me-1"></i>Vào học';
-                                this.disabled = false;
-
-                                // Change button to link
-                                const link = document.createElement('a');
-                                link.href = '<?php echo BASE_URL; ?>/student/course/' + courseId;
-                                link.className = 'btn-enroll btn-enrolled';
-                                link.innerHTML = '<i class="fas fa-play-circle me-1"></i>Vào học';
-                                this.parentNode.replaceChild(link, this);
-
-                                // Add enrolled badge
-                                const card = document.querySelector(`[data-course-id="${courseId}"]`);
-                                const imgWrapper = card.querySelector('.card-img-wrapper');
-                                if (!imgWrapper.querySelector('.enrolled-badge')) {
-                                    const badge = document.createElement('span');
-                                    badge.className = 'enrolled-badge';
-                                    badge.innerHTML = '<i class="fas fa-check me-1"></i>Đã đăng ký';
-                                    imgWrapper.appendChild(badge);
-                                }
-
-                                // Show success toast
-                                const toastBody = document.querySelector('#enrollToast .toast-body');
-                                toastBody.textContent = `Đã đăng ký thành công khóa học "${courseTitle}"!`;
-                                toast.show();
-                            } else {
-                                throw new Error(data.message || 'Đăng ký thất bại');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            this.disabled = false;
-                            this.innerHTML = originalHTML;
-
-                            // Show error toast
-                            const toastHeader = document.querySelector('#enrollToast .toast-header');
-                            const toastBody = document.querySelector('#enrollToast .toast-body');
-                            const icon = toastHeader.querySelector('i');
-
-                            icon.className = 'fas fa-exclamation-circle text-danger me-2';
-                            toastHeader.querySelector('strong').textContent = 'Lỗi';
-                            toastBody.textContent = error.message || 'Có lỗi xảy ra. Vui lòng thử lại!';
-                            toast.show();
-
-                            // Reset toast style after hide
-                            setTimeout(() => {
-                                icon.className = 'fas fa-check-circle text-success me-2';
-                                toastHeader.querySelector('strong').textContent = 'Thành công';
-                            }, 3000);
-                        });
-                });
-            });
-        });
-    </script>
 </body>
 
 </html>

@@ -1098,13 +1098,13 @@ $stats = [
 
                 <?php if ($stats['total_courses'] > 0): ?>
 
-                        <span class="badge-notification"><?php echo $stats['total_courses']; ?></span>
+                    <span class="badge-notification"><?php echo $stats['total_courses']; ?></span>
 
                 <?php endif; ?>
 
             </a>
 
-            <a href="<?php echo BASE_URL; ?>/courses" class="sidebar-item">
+            <a href="<?php echo BASE_URL; ?>/courses/explore" class="sidebar-item">
 
                 <i class="fas fa-search"></i>
 
@@ -1184,10 +1184,8 @@ $stats = [
 
             <h3 class="section-title">Danh sách (<?php echo count($courses); ?> khóa học)</h3>
 
-            <a href="<?php echo BASE_URL; ?>/courses" class="btn btn-primary">
-
+            <a href="<?php echo BASE_URL; ?>/courses/explore" class="btn btn-primary">
                 <i class="fas fa-plus me-2"></i>Đăng ký khóa học mới
-
             </a>
 
         </div>
@@ -1196,161 +1194,161 @@ $stats = [
 
         <?php if (!empty($courses)): ?>
 
-                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
 
-                    <?php foreach ($courses as $course):
+                <?php foreach ($courses as $course):
 
-                        $progress = $course['progress'] ?? 0;
+                    $progress = $course['progress'] ?? 0;
 
-                        ?>
+                    ?>
 
-                            <div class="col">
+                    <div class="col">
 
-                                <a href="<?php echo BASE_URL; ?>/student/course/<?php echo $course['course_id'] ?? $course['id']; ?>"
-                                    class="course-card-link">
+                        <a href="<?php echo BASE_URL; ?>/student/course/<?php echo $course['course_id'] ?? $course['id']; ?>"
+                            class="course-card-link">
 
-                                    <div class="course-card h-100">
+                            <div class="course-card h-100">
 
-                                        <div class="card-img-wrapper">
+                                <div class="card-img-wrapper">
 
-                                            <?php
+                                    <?php
 
-                                            $imgSrc = !empty($course['image'])
+                                    $imgSrc = !empty($course['image'])
 
-                                                ? BASE_URL . '/assets/uploads/courses/' . $course['image']
+                                        ? BASE_URL . '/assets/uploads/courses/' . $course['image']
 
-                                                : null; // Thay đổi: Nếu không có ảnh, đặt $imgSrc là null
-                                    
-
-
-                                            $hasImage = !empty($imgSrc);
-
-                                            ?>
+                                        : null; // Thay đổi: Nếu không có ảnh, đặt $imgSrc là null
+                            
 
 
+                                    $hasImage = !empty($imgSrc);
 
-                                            <?php if ($hasImage): ?>
+                                    ?>
 
-                                                    <img src="<?php echo htmlspecialchars($imgSrc); ?>" class="course-thumb"
-                                                        alt="Hình ảnh khóa học">
 
-                                            <?php else: ?>
 
-                                                    <div class="d-flex align-items-center justify-content-center h-100"
-                                                        style="background-color: #f1f5f9; color: var(--primary-color);">
+                                    <?php if ($hasImage): ?>
 
-                                                        <i class="fas fa-book fa-4x"></i>
+                                        <img src="<?php echo htmlspecialchars($imgSrc); ?>" class="course-thumb"
+                                            alt="Hình ảnh khóa học">
 
-                                                    </div>
+                                    <?php else: ?>
 
-                                            <?php endif; ?>
+                                        <div class="d-flex align-items-center justify-content-center h-100"
+                                            style="background-color: #f1f5f9; color: var(--primary-color);">
 
-                                            <?php
-
-                                            if ($progress == 100): ?>
-
-                                                    <span class="course-level level-advanced position-absolute top-0 end-0 m-3">Hoàn
-
-                                                        thành</span>
-
-                                            <?php elseif ($progress > 0): ?>
-
-                                                    <span class="course-level level-intermediate position-absolute top-0 end-0 m-3">Đang
-
-                                                        học</span>
-
-                                            <?php else: ?>
-
-                                                    <span class="course-level level-beginner position-absolute top-0 end-0 m-3">Chưa bắt
-
-                                                        đầu</span>
-
-                                            <?php endif; ?>
+                                            <i class="fas fa-book fa-4x"></i>
 
                                         </div>
 
+                                    <?php endif; ?>
+
+                                    <?php
+
+                                    if ($progress == 100): ?>
+
+                                        <span class="course-level level-advanced position-absolute top-0 end-0 m-3">Hoàn
+
+                                            thành</span>
+
+                                    <?php elseif ($progress > 0): ?>
+
+                                        <span class="course-level level-intermediate position-absolute top-0 end-0 m-3">Đang
+
+                                            học</span>
+
+                                    <?php else: ?>
+
+                                        <span class="course-level level-beginner position-absolute top-0 end-0 m-3">Chưa bắt
+
+                                            đầu</span>
+
+                                    <?php endif; ?>
+
+                                </div>
 
 
-                                        <div class="course-body">
 
-                                            <h3 class="course-title" title="<?php echo htmlspecialchars($course['title']); ?>">
+                                <div class="course-body">
 
-                                                <?php echo htmlspecialchars($course['title']); ?>
+                                    <h3 class="course-title" title="<?php echo htmlspecialchars($course['title']); ?>">
 
-                                            </h3>
+                                        <?php echo htmlspecialchars($course['title']); ?>
+
+                                    </h3>
 
 
 
-                                            <div class="instructor-name">
+                                    <div class="instructor-name">
 
-                                                <i class="fas fa-chalkboard-teacher"></i>
+                                        <i class="fas fa-chalkboard-teacher"></i>
 
-                                                GV: <?php echo htmlspecialchars($course['instructor_name'] ?? 'Chưa cập nhật'); ?>
+                                        GV: <?php echo htmlspecialchars($course['instructor_name'] ?? 'Chưa cập nhật'); ?>
+
+                                    </div>
+
+
+
+                                    <div class="progress-wrapper">
+
+                                        <div class="progress-info">
+
+                                            <span>Tiến độ</span>
+
+                                            <span class="fw-bold"><?php echo $progress; ?>%</span>
+
+                                        </div>
+
+                                        <div class="progress-bar">
+
+                                            <div class="progress-fill <?php echo $progress == 100 ? 'progress-100' : ''; ?>"
+                                                style="width: <?php echo $progress; ?>%">
 
                                             </div>
-
-
-
-                                            <div class="progress-wrapper">
-
-                                                <div class="progress-info">
-
-                                                    <span>Tiến độ</span>
-
-                                                    <span class="fw-bold"><?php echo $progress; ?>%</span>
-
-                                                </div>
-
-                                                <div class="progress-bar">
-
-                                                    <div class="progress-fill <?php echo $progress == 100 ? 'progress-100' : ''; ?>"
-                                                        style="width: <?php echo $progress; ?>%">
-
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-
-
-                                            <a href="<?php echo BASE_URL; ?>/student/course/<?php echo $course['course_id'] ?? $course['id']; ?>"
-                                                class="btn-learning">
-
-                                                <i class="fas fa-play-circle me-1"></i>
-
-                                                <?php echo $progress > 0 ? 'Tiếp tục học' : 'Bắt đầu học'; ?>
-
-                                            </a>
 
                                         </div>
 
                                     </div>
 
-                                </a>
+
+                                    <a href="<?php echo BASE_URL; ?>/student/course/<?php echo $course['course_id'] ?? $course['id']; ?>"
+                                        class="btn-learning">
+
+                                        <i class="fas fa-play-circle me-1"></i>
+
+                                        <?php echo $progress > 0 ? 'Tiếp tục học' : 'Bắt đầu học'; ?>
+
+                                    </a>
+
+                                </div>
 
                             </div>
 
-                    <?php endforeach; ?>
+                        </a>
 
-                </div>
+                    </div>
+
+                <?php endforeach; ?>
+
+            </div>
 
         <?php else: ?>
 
-                <div class="empty-state">
+            <div class="empty-state">
 
-                    <i class="fas fa-folder-open"></i>
+                <i class="fas fa-folder-open"></i>
 
-                    <h4>Bạn chưa đăng ký khóa học nào</h4>
+                <h4>Bạn chưa đăng ký khóa học nào</h4>
 
-                    <p class="text-muted">Hãy khám phá thư viện khóa học phong phú của chúng tôi.</p>
+                <p class="text-muted">Hãy khám phá thư viện khóa học phong phú của chúng tôi.</p>
 
-                    <a href="<?php echo BASE_URL; ?>/courses" class="btn btn-primary mt-3">
+                <a href="<?php echo BASE_URL; ?>/courses" class="btn btn-primary mt-3">
 
-                        <i class="fas fa-search me-2"></i>Tìm khóa học ngay
+                    <i class="fas fa-search me-2"></i>Tìm khóa học ngay
 
-                    </a>
+                </a>
 
-                </div>
+            </div>
 
         <?php endif; ?>
 

@@ -1,3 +1,56 @@
+<?php
+// Dữ liệu từ Controller: $courses, $categories, $totalCourses, $currentPage, $totalPages
+$BASE_URL = $BASE_URL ?? '/base';
+$_SESSION['fullname'] = $_SESSION['fullname'] ?? 'Giảng viên';
+
+// Cần khởi tạo các biến phân trang nếu không có
+$currentPage = $currentPage ?? 1;
+$totalPages = $totalPages ?? 1;
+
+// Khởi tạo mảng $courses nếu null
+$courses = $courses ?? [];
+
+// ===================================================================================
+// LOGIC TÍNH TOÁN THỐNG KÊ (SỬ DỤNG GIÁ TRỊ SỐ TỪ DB: 1=approved, 0/default=pending, 2=rejected)
+// ===================================================================================
+$totalCourses = count($courses);
+$approvedCourses = 0;
+$pendingCourses = 0;
+$rejectedCourses = 0;
+
+foreach ($courses as $course) {
+    // [QUAN TRỌNG]: Đảm bảo giá trị trạng thái là số nguyên để so sánh chính xác
+    $status = (int) ($course['status'] ?? 0);
+    
+    switch ($status) {
+        case 1: 
+            $approvedCourses++;
+            break;
+        case 2: 
+            $rejectedCourses++;
+            break;
+        case 0: 
+        default:
+            $pendingCourses++;
+            break;
+    }
+}
+
+/**
+ * Helper function: Chuyển đổi trạng thái số sang chuỗi hiển thị và class CSS
+ * @param int $status_int Trạng thái số từ DB
+ * @return array [label, class]
+ */
+function getStatusInfo($status_int) {
+    $status_int = (int) $status_int;
+    return match ($status_int) {
+        1 => ['Đã duyệt', 'approved'],
+        2 => ['Đã từ chối', 'rejected'],
+        default => ['Chờ duyệt', 'pending'],
+    };
+}
+
+?>
 <!DOCTYPE html>
 <html lang="vi">
 
@@ -271,6 +324,7 @@
         .header-title p {
             font-size: 16px;
             color: var(--gray);
+            margin: 0;
         }
 
         .header-actions {
@@ -426,7 +480,8 @@
             transform: translateY(-50%);
             color: var(--gray);
         }
-
+        
+        /* Cần điều chỉnh search-box input để căn chỉnh với label */
         .search-box input {
             width: 100%;
             padding: 10px 16px 10px 48px;
@@ -435,6 +490,20 @@
             font-size: 14px;
             transition: all 0.3s;
         }
+        
+        .search-box .filter-group > label {
+            /* Giúp label căn chỉnh tốt hơn */
+            display: block;
+            visibility: hidden; 
+            height: 14px; /* chiều cao tương đương label khác */
+            margin-bottom: 8px; /* margin tương đương label khác */
+        }
+        
+        .search-box .search-input {
+             /* Đẩy input lên sát trên để căn chỉnh ngang hàng với các select */
+             margin-top: -30px; /* Điều chỉnh nếu cần thiết */
+        }
+
 
         .search-box input:focus {
             outline: none;
@@ -606,6 +675,7 @@
             font-weight: 500;
         }
 
+        /* [Đã sửa lỗi trạng thái số/chuỗi] */
         .status-badge.pending {
             background: linear-gradient(135deg, #fef3c7, #fcd34d);
             color: #92400e;
@@ -697,6 +767,7 @@
             border-radius: var(--radius-sm);
             font-size: 14px;
             color: var(--dark);
+            text-decoration: none;
         }
 
         .page-number.active {
@@ -769,7 +840,6 @@
 
 <body>
     <div class="modern-layout">
-        <!-- Sidebar -->
         <aside class="modern-sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-logo">
@@ -778,7 +848,7 @@
                 </div>
                 <div class="sidebar-user">
                     <div class="sidebar-user-avatar">
-                        <i class="fas fa-user"></i>
+                        <?php echo strtoupper(substr($_SESSION['fullname'] ?? 'G', 0, 1)); ?>
                     </div>
                     <div class="sidebar-user-info">
                         <h4><?php echo htmlspecialchars($_SESSION['fullname']); ?></h4>
@@ -819,9 +889,7 @@
             </nav>
         </aside>
 
-        <!-- Main Content -->
         <div class="modern-content">
-            <!-- Top Navigation -->
             <nav class="top-nav">
                 <div class="top-nav-left">
                     <h1 class="page-title">Quản lý Khóa học</h1>
@@ -840,9 +908,7 @@
                 </div>
             </nav>
 
-            <!-- Content Area -->
             <div class="content-area">
-                <!-- Page Header -->
                 <div class="page-header">
                     <div class="header-title">
                         <h1>Khóa học của tôi</h1>
@@ -855,33 +921,6 @@
                         </a>
                     </div>
                 </div>
-
-                <!-- Statistics -->
-                <?php
-                // Tính toán số lượng khóa học theo trạng thái
-                $totalCourses = isset($courses) ? count($courses) : 0;
-                $approvedCourses = 0;
-                $pendingCourses = 0;
-                $rejectedCourses = 0;
-
-                if (isset($courses)) {
-                    foreach ($courses as $course) {
-                        $status = $course['status'] ?? 'pending';
-                        switch ($status) {
-                            case 'approved':
-                                $approvedCourses++;
-                                break;
-                            case 'rejected':
-                                $rejectedCourses++;
-                                break;
-                            case 'pending':
-                            default:
-                                $pendingCourses++;
-                                break;
-                        }
-                    }
-                }
-                ?>
 
                 <div class="statistics-grid">
                     <div class="stat-card">
@@ -933,20 +972,19 @@
                     </div>
                 </div>
 
-                <!-- Filters -->
                 <div class="filters-section">
-                    <form method="GET" action="">
+                    <form method="GET" action="<?php echo BASE_URL; ?>/course/manage">
                         <div class="filters-grid">
-                            <div class="search-box">
-                                <label>&nbsp;</label>
+                            <div class="filter-group search-box">
+                                <label for="search-input">&nbsp;</label>
                                 <i class="fas fa-search"></i>
-                                <input type="text" name="search" placeholder="Tìm kiếm khóa học..."
-                                    value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>">
+                                <input type="text" name="search" id="search-input" placeholder="Tìm kiếm khóa học..."
+                                    value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>" class="search-input">
                             </div>
 
                             <div class="filter-group">
-                                <label>Danh mục</label>
-                                <select name="category" class="filter-select">
+                                <label for="category-select">Danh mục</label>
+                                <select name="category" class="filter-select" id="category-select">
                                     <option value="">Tất cả danh mục</option>
                                     <?php if (isset($categories) && is_array($categories)): ?>
                                         <?php foreach ($categories as $category): ?>
@@ -960,17 +998,17 @@
                             </div>
 
                             <div class="filter-group">
-                                <label>Trạng thái</label>
-                                <select name="status" class="filter-select">
+                                <label for="status-select">Trạng thái</label>
+                                <select name="status" class="filter-select" id="status-select">
                                     <option value="">Tất cả trạng thái</option>
-                                    <option value="pending"
-                                        <?php echo (isset($_GET['status']) && $_GET['status'] == 'pending') ? 'selected' : ''; ?>>
+                                    <option value="0"
+                                        <?php echo (isset($_GET['status']) && $_GET['status'] === '0') ? 'selected' : ''; ?>>
                                         Chờ duyệt</option>
-                                    <option value="approved"
-                                        <?php echo (isset($_GET['status']) && $_GET['status'] == 'approved') ? 'selected' : ''; ?>>
+                                    <option value="1"
+                                        <?php echo (isset($_GET['status']) && $_GET['status'] === '1') ? 'selected' : ''; ?>>
                                         Đã duyệt</option>
-                                    <option value="rejected"
-                                        <?php echo (isset($_GET['status']) && $_GET['status'] == 'rejected') ? 'selected' : ''; ?>>
+                                    <option value="2"
+                                        <?php echo (isset($_GET['status']) && $_GET['status'] === '2') ? 'selected' : ''; ?>>
                                         Đã từ chối</option>
                                 </select>
                             </div>
@@ -986,29 +1024,24 @@
                     </form>
                 </div>
 
-                <!-- Courses Grid -->
-                <?php if (isset($courses) && !empty($courses)): ?>
+                <?php if (!empty($courses)): ?>
                     <div class="courses-grid">
-                        <?php foreach ($courses as $course): ?>
+                        <?php foreach ($courses as $course): 
+                            // [SỬA LỖI HIỂN THỊ]: Lấy thông tin trạng thái chính xác
+                            list($status_label, $status_class) = getStatusInfo($course['status'] ?? 0);
+                        ?>
                             <div class="course-card">
                                 <div class="course-image">
                                     <?php if (!empty($course['image'])): ?>
                                         <img src="<?php echo BASE_URL; ?>/assets/uploads/courses/<?php echo htmlspecialchars($course['image']); ?>"
-                                            alt="<?php echo htmlspecialchars($course['title']); ?>">
+                                            alt="<?php echo htmlspecialchars($course['title']); ?>" loading="lazy">
                                     <?php else: ?>
                                         <i class="fas fa-book-open"></i>
                                     <?php endif; ?>
 
                                     <div class="course-badge">
-                                        <span class="status-badge <?php echo $course['status'] ?? 'pending'; ?>">
-                                            <?php
-                                            $status = $course['status'] ?? 'pending';
-                                            echo match ($status) {
-                                                'approved' => 'Đã duyệt',
-                                                'rejected' => 'Đã từ chối',
-                                                default => 'Chờ duyệt'
-                                            };
-                                            ?>
+                                        <span class="status-badge <?php echo $status_class; ?>">
+                                            <?php echo $status_label; ?>
                                         </span>
                                     </div>
                                 </div>
@@ -1034,7 +1067,7 @@
                                         </div>
                                         <div class="meta-item">
                                             <i class="fas fa-list-ol"></i>
-                                            <span>0 bài học</span>
+                                            <span><?php echo htmlspecialchars($course['lesson_count'] ?? 0); ?> bài học</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1058,15 +1091,14 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <a href="<?php echo BASE_URL; ?>/courses/detail/<?php echo $course['id']; ?>"
-                                            class="action-btn" target="_blank" title="Xem trước">
+                                            class="action-btn" target="_blank" title="Xem trước (Public)">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         <a href="<?php echo BASE_URL; ?>/instructor/enrollments/<?php echo $course['id']; ?>"
                                             class="action-btn" title="Học viên">
                                             <i class="fas fa-users"></i>
                                         </a>
-                                        <!-- NÚT XÓA -->
-                                        <a href="<?php echo BASE_URL; ?>/course/delete/<?php echo $course['id']; ?>"
+                                        <a href="#"
                                             class="action-btn delete-btn" title="Xóa khóa học"
                                             onclick="return confirmDelete(<?php echo $course['id']; ?>, '<?php echo addslashes(htmlspecialchars($course['title'])); ?>')">
                                             <i class="fas fa-trash"></i>
@@ -1077,11 +1109,15 @@
                         <?php endforeach; ?>
                     </div>
 
-                    <!-- Pagination -->
                     <?php if (isset($totalPages) && $totalPages > 1): ?>
                         <div class="pagination">
+                            <?php 
+                            $currentQuery = http_build_query(array_filter($_GET, fn($k) => $k !== 'page', ARRAY_FILTER_USE_KEY)); 
+                            $queryPrefix = empty($currentQuery) ? '?' : '?' . $currentQuery . '&';
+                            ?>
+
                             <?php if ($currentPage > 1): ?>
-                                <a href="?page=<?php echo $currentPage - 1; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>"
+                                <a href="<?php echo $queryPrefix; ?>page=<?php echo $currentPage - 1; ?>"
                                     class="pagination-btn">
                                     <i class="fas fa-chevron-left"></i>
                                     Trước
@@ -1097,7 +1133,7 @@
                                 <?php if ($i == $currentPage): ?>
                                     <span class="page-number active"><?php echo $i; ?></span>
                                 <?php else: ?>
-                                    <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>"
+                                    <a href="<?php echo $queryPrefix; ?>page=<?php echo $i; ?>"
                                         class="page-number">
                                         <?php echo $i; ?>
                                     </a>
@@ -1105,7 +1141,7 @@
                             <?php endfor; ?>
 
                             <?php if ($currentPage < $totalPages): ?>
-                                <a href="?page=<?php echo $currentPage + 1; ?>&search=<?php echo urlencode($_GET['search'] ?? ''); ?>&category=<?php echo $_GET['category'] ?? ''; ?>&status=<?php echo $_GET['status'] ?? ''; ?>"
+                                <a href="<?php echo $queryPrefix; ?>page=<?php echo $currentPage + 1; ?>"
                                     class="pagination-btn">
                                     Sau
                                     <i class="fas fa-chevron-right"></i>
@@ -1159,15 +1195,7 @@
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            // Add click animation to buttons
-            document.querySelectorAll('.action-btn, .btn-primary, .btn-logout, .btn-view-home').forEach(element => {
-                element.addEventListener('click', function(e) {
-                    this.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        this.style.transform = '';
-                    }, 150);
-                });
-            });
+            // [Đã xóa animation click để tránh xung đột với SweetAlert]
 
             // Add keyboard shortcuts
             document.addEventListener('keydown', function(e) {
@@ -1188,17 +1216,6 @@
                     e.preventDefault();
                     window.open('<?php echo BASE_URL; ?>/', '_blank');
                 }
-            });
-
-            // Course card hover effect
-            document.querySelectorAll('.course-card').forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-8px)';
-                });
-
-                card.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0)';
-                });
             });
         });
     </script>

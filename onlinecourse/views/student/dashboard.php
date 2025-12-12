@@ -728,7 +728,7 @@ $upcomingLessons = $upcomingLessons ?? [];
                     <span class="badge-notification"><?php echo $stats['total_courses']; ?></span>
                 <?php endif; ?>
             </a>
-            <a href="<?php echo BASE_URL; ?>/courses" class="sidebar-item">
+            <a href="<?php echo BASE_URL; ?>/courses/explore" class="sidebar-item">
                 <i class="fas fa-search"></i>
                 <span>Tìm khóa học</span>
             </a>
@@ -1025,12 +1025,12 @@ $upcomingLessons = $upcomingLessons ?? [];
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Toggle sidebar on mobile
-        document.querySelector('.sidebar-toggle').addEventListener('click', function() {
+        document.querySelector('.sidebar-toggle').addEventListener('click', function () {
             document.querySelector('.sidebar').classList.toggle('active');
         });
 
         // Auto update progress bars
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const progressBars = document.querySelectorAll('.progress-fill');
             progressBars.forEach(bar => {
                 const targetWidth = bar.style.width;
@@ -1043,7 +1043,7 @@ $upcomingLessons = $upcomingLessons ?? [];
 
         // Mark notifications as read
         document.querySelectorAll('.alert').forEach(alert => {
-            alert.addEventListener('click', function() {
+            alert.addEventListener('click', function () {
                 this.style.opacity = '0.7';
             });
         });
